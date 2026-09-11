@@ -56,6 +56,7 @@ def init_db():
             status TEXT NOT NULL DEFAULT 'plan to watch',
             rating INTEGER NOT NULL DEFAULT 0,
             poster_url TEXT NOT NULL DEFAULT '',
+            review TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
@@ -63,6 +64,8 @@ def init_db():
     existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
     if "poster_url" not in existing_columns:
         conn.execute("ALTER TABLE items ADD COLUMN poster_url TEXT NOT NULL DEFAULT ''")
+    if "review" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN review TEXT NOT NULL DEFAULT ''")
     conn.commit()
     conn.close()
 
@@ -75,6 +78,7 @@ def row_to_dict(row):
         "status": row["status"],
         "rating": row["rating"],
         "poster_url": row["poster_url"] if "poster_url" in row.keys() else "",
+        "review": row["review"] if "review" in row.keys() else "",
         "created_at": row["created_at"],
     }
 
@@ -111,6 +115,11 @@ def validate_payload(data, partial=False):
     elif not partial:
         cleaned["poster_url"] = ""
 
+    if "review" in data:
+        cleaned["review"] = (data.get("review") or "").strip()
+    elif not partial:
+        cleaned["review"] = ""
+
     return cleaned, None
 
 
@@ -144,8 +153,15 @@ def create_item():
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO items (title, genre, status, rating, poster_url) VALUES (?, ?, ?, ?, ?)",
-        (cleaned["title"], cleaned["genre"], cleaned["status"], cleaned["rating"], cleaned["poster_url"]),
+        "INSERT INTO items (title, genre, status, rating, poster_url, review) VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            cleaned["title"],
+            cleaned["genre"],
+            cleaned["status"],
+            cleaned["rating"],
+            cleaned["poster_url"],
+            cleaned["review"],
+        ),
     )
     db.commit()
     new_row = db.execute("SELECT * FROM items WHERE id = ?", (cursor.lastrowid,)).fetchone()
@@ -168,8 +184,16 @@ def update_item(item_id):
     merged.update(cleaned)
 
     db.execute(
-        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ? WHERE id = ?",
-        (merged["title"], merged["genre"], merged["status"], merged["rating"], merged["poster_url"], item_id),
+        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ?, review = ? WHERE id = ?",
+        (
+            merged["title"],
+            merged["genre"],
+            merged["status"],
+            merged["rating"],
+            merged["poster_url"],
+            merged["review"],
+            item_id,
+        ),
     )
     db.commit()
     updated_row = db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
