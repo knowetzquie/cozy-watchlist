@@ -1,12 +1,6 @@
 import { useState } from "react";
 import StarRating from "./StarRating.jsx";
 
-const STATUS_LABEL = {
-  watching: "Watching",
-  "plan to watch": "Plan to Watch",
-  completed: "Completed",
-};
-
 export default function WatchlistItem({ item, onUpdate, onDelete }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -16,8 +10,15 @@ export default function WatchlistItem({ item, onUpdate, onDelete }) {
 
       <div className="ticket__body">
         <div className="ticket__main">
-          <p className="ticket__title">{item.title}</p>
-          {item.genre && <p className="ticket__genre">{item.genre}</p>}
+          {item.poster_url ? (
+            <img src={item.poster_url} alt="" className="ticket__poster" />
+          ) : (
+            <div className="ticket__poster ticket__poster--empty">🎬</div>
+          )}
+          <div>
+            <p className="ticket__title">{item.title}</p>
+            {item.genre && <p className="ticket__genre">{item.genre}</p>}
+          </div>
         </div>
 
         <div className="ticket__controls">
@@ -39,10 +40,16 @@ export default function WatchlistItem({ item, onUpdate, onDelete }) {
           {confirmingDelete ? (
             <span className="confirm-delete">
               Remove?
-              <button className="btn btn--tiny btn--danger" onClick={() => onDelete(item.id)}>
+              <button
+                className="btn btn--tiny btn--danger"
+                onClick={() => onDelete(item.id)}
+              >
                 Yes
               </button>
-              <button className="btn btn--tiny btn--ghost" onClick={() => setConfirmingDelete(false)}>
+              <button
+                className="btn btn--tiny btn--ghost"
+                onClick={() => setConfirmingDelete(false)}
+              >
                 No
               </button>
             </span>

@@ -2,24 +2,35 @@
 Watchlist Tracker — backend API
 
 A small Flask app backed by SQLite. Stores movies/anime with a title,
-genre, status, and a 0-5 rating. Data is persisted to watchlist.db in
-this same folder, so it survives restarts.
+genre, status, rating, and an optional poster image. Data is persisted
+to watchlist.db in this same folder, so it survives restarts.
+
+Title search/autocomplete (with posters) is powered by TMDB
+(themoviedb.org). Put your API key in a `.env` file in this folder:
+    TMDB_API_KEY=your_key_here
 """
 
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
+from dotenv import load_dotenv
 import sqlite3
 import os
+import requests
+
+load_dotenv()
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
 VALID_STATUSES = {"watching", "plan to watch", "completed"}
 
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
+TMDB_BASE = "https://api.themoviedb.org/3"
+TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w200"
+
 app = Flask(__name__)
-CORS(app)  # allow the React dev server (different port) to call this API
+CORS(app)
 
 
 def get_db():
-    """Open (or reuse) a SQLite connection for the current request."""
     if "db" not in g:
         g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
@@ -35,7 +46,6 @@ def close_db(exception=None):
 
 
 def init_db():
-    """Create the items table if it doesn't exist yet."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         """
@@ -45,10 +55,14 @@ def init_db():
             genre TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT 'plan to watch',
             rating INTEGER NOT NULL DEFAULT 0,
+            poster_url TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
     )
+    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+    if "poster_url" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN poster_url TEXT NOT NULL DEFAULT ''")
     conn.commit()
     conn.close()
 
@@ -60,12 +74,12 @@ def row_to_dict(row):
         "genre": row["genre"],
         "status": row["status"],
         "rating": row["rating"],
+        "poster_url": row["poster_url"] if "poster_url" in row.keys() else "",
         "created_at": row["created_at"],
     }
 
 
 def validate_payload(data, partial=False):
-    """Returns (cleaned_dict, error_message). error_message is None if valid."""
     cleaned = {}
 
     if "title" in data or not partial:
@@ -91,6 +105,11 @@ def validate_payload(data, partial=False):
         if rating < 0 or rating > 5:
             return None, "Rating must be between 0 and 5."
         cleaned["rating"] = rating
+
+    if "poster_url" in data:
+        cleaned["poster_url"] = (data.get("poster_url") or "").strip()
+    elif not partial:
+        cleaned["poster_url"] = ""
 
     return cleaned, None
 
@@ -125,8 +144,8 @@ def create_item():
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO items (title, genre, status, rating) VALUES (?, ?, ?, ?)",
-        (cleaned["title"], cleaned["genre"], cleaned["status"], cleaned["rating"]),
+        "INSERT INTO items (title, genre, status, rating, poster_url) VALUES (?, ?, ?, ?, ?)",
+        (cleaned["title"], cleaned["genre"], cleaned["status"], cleaned["rating"], cleaned["poster_url"]),
     )
     db.commit()
     new_row = db.execute("SELECT * FROM items WHERE id = ?", (cursor.lastrowid,)).fetchone()
@@ -149,8 +168,8 @@ def update_item(item_id):
     merged.update(cleaned)
 
     db.execute(
-        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ? WHERE id = ?",
-        (merged["title"], merged["genre"], merged["status"], merged["rating"], item_id),
+        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ? WHERE id = ?",
+        (merged["title"], merged["genre"], merged["status"], merged["rating"], merged["poster_url"], item_id),
     )
     db.commit()
     updated_row = db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
@@ -167,6 +186,88 @@ def delete_item(item_id):
     db.execute("DELETE FROM items WHERE id = ?", (item_id,))
     db.commit()
     return jsonify({"deleted": item_id})
+
+
+_genre_cache = {}
+
+
+def get_genre_map():
+    if _genre_cache:
+        return _genre_cache
+    if not TMDB_API_KEY:
+        return {}
+    try:
+        for kind in ("movie", "tv"):
+            resp = requests.get(
+                f"{TMDB_BASE}/genre/{kind}/list",
+                params={"api_key": TMDB_API_KEY},
+                timeout=5,
+            )
+            resp.raise_for_status()
+            for genre in resp.json().get("genres", []):
+                _genre_cache[genre["id"]] = genre["name"]
+    except requests.RequestException:
+        pass
+    return _genre_cache
+
+
+@app.route("/api/search-titles", methods=["GET"])
+def search_titles():
+    query = (request.args.get("q") or "").strip()
+    if not query:
+        return jsonify([])
+
+    if not TMDB_API_KEY:
+        return jsonify({"error": "TMDB_API_KEY is not set on the server."}), 500
+
+    try:
+        resp = requests.get(
+            f"{TMDB_BASE}/search/multi",
+            params={"api_key": TMDB_API_KEY, "query": query, "include_adult": "false"},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException:
+        return jsonify({"error": "Could not reach the movie database."}), 502
+
+    genre_map = get_genre_map()
+    results = []
+    for item in data.get("results", [])[:8]:
+        media_type = item.get("media_type")
+        if media_type not in ("movie", "tv"):
+            continue
+
+        title = item.get("title") or item.get("name") or ""
+        if not title:
+            continue
+
+        date = item.get("release_date") or item.get("first_air_date") or ""
+        year = date[:4] if date else None
+
+        genre_ids = item.get("genre_ids", [])
+        genre_names = [genre_map[gid] for gid in genre_ids if gid in genre_map]
+        is_animation = "Animation" in genre_names
+        is_japanese = item.get("original_language") == "ja"
+
+        if media_type == "tv" and is_animation and is_japanese:
+            kind_label = "Anime"
+        elif media_type == "tv":
+            kind_label = "TV Series"
+        else:
+            kind_label = "Movie"
+
+        poster_path = item.get("poster_path")
+
+        results.append({
+            "title": title,
+            "year": year,
+            "kind": kind_label,
+            "genre": ", ".join(genre_names[:2]),
+            "poster_url": f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else "",
+        })
+
+    return jsonify(results)
 
 
 if __name__ == "__main__":

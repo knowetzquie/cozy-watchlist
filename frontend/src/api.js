@@ -16,7 +16,8 @@ async function handle(response) {
 
 export const api = {
   list(status) {
-    const query = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+    const query =
+      status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
     return fetch(`${BASE_URL}/items${query}`).then(handle);
   },
 
@@ -38,5 +39,11 @@ export const api = {
 
   remove(id) {
     return fetch(`${BASE_URL}/items/${id}`, { method: "DELETE" }).then(handle);
+  },
+
+  searchTitles(query) {
+    return fetch(
+      `${BASE_URL}/search-titles?q=${encodeURIComponent(query)}`,
+    ).then(handle);
   },
 };

@@ -315,6 +315,110 @@ select {
   margin: 0.4rem 0 0;
 }
 
+/* ---------- Title search / autocomplete ---------- */
+
+.title-search {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fffdf8;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.suggestions__status {
+  padding: 0.65rem 0.8rem;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.suggestions__status--error {
+  color: #a5402c;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--card-edge);
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestion:last-child {
+  border-bottom: none;
+}
+
+.suggestion:hover {
+  background: var(--card-edge);
+}
+
+.suggestion__poster {
+  width: 34px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--card-edge);
+}
+
+.suggestion__poster--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.suggestion__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.suggestion__title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion__meta {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.poster-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.poster-preview img {
+  width: 32px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
 /* ---------- Star rating ---------- */
 
 .star-rating {
@@ -388,6 +492,29 @@ select {
   gap: 1rem;
   padding: 0.9rem 1.1rem;
   flex-wrap: wrap;
+}
+
+.ticket__main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.ticket__poster {
+  width: 40px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 5px;
+  flex-shrink: 0;
+  background: var(--card-edge);
+}
+
+.ticket__poster--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
 }
 
 .ticket__title {
