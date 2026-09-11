@@ -1,0 +1,12 @@
+# Backend
+backend/__pycache__/
+backend/watchlist.db
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Editor/OS
+.DS_Store
+.vscode/
