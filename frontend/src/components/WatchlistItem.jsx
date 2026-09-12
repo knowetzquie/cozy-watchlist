@@ -39,6 +39,25 @@ export default function WatchlistItem({ item, onUpdate, onDelete }) {
 
           <div className="ticket__controls">
             <select
+              className="favorite-select"
+              value={item.favorite_rank || ""}
+              onChange={(e) =>
+                onUpdate(item.id, {
+                  favorite_rank:
+                    e.target.value === "" ? null : Number(e.target.value),
+                })
+              }
+              title="Top 5 of All Time"
+            >
+              <option value="">☆ Top 5</option>
+              <option value="1">★ #1</option>
+              <option value="2">★ #2</option>
+              <option value="3">★ #3</option>
+              <option value="4">★ #4</option>
+              <option value="5">★ #5</option>
+            </select>
+
+            <select
               className="status-select"
               value={item.status}
               onChange={(e) => onUpdate(item.id, { status: e.target.value })}

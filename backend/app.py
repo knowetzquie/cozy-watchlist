@@ -46,6 +46,8 @@ def close_db(exception=None):
 
 
 def init_db():
+    """Create the items table if it doesn't exist yet, and add new columns
+    to older databases that were created before poster_url existed."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         """
@@ -57,15 +59,19 @@ def init_db():
             rating INTEGER NOT NULL DEFAULT 0,
             poster_url TEXT NOT NULL DEFAULT '',
             review TEXT NOT NULL DEFAULT '',
+            favorite_rank INTEGER DEFAULT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
     )
+    # Migration for databases created before poster_url/review/favorite_rank existed.
     existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
     if "poster_url" not in existing_columns:
         conn.execute("ALTER TABLE items ADD COLUMN poster_url TEXT NOT NULL DEFAULT ''")
     if "review" not in existing_columns:
         conn.execute("ALTER TABLE items ADD COLUMN review TEXT NOT NULL DEFAULT ''")
+    if "favorite_rank" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN favorite_rank INTEGER DEFAULT NULL")
     conn.commit()
     conn.close()
 
@@ -79,9 +85,9 @@ def row_to_dict(row):
         "rating": row["rating"],
         "poster_url": row["poster_url"] if "poster_url" in row.keys() else "",
         "review": row["review"] if "review" in row.keys() else "",
+        "favorite_rank": row["favorite_rank"] if "favorite_rank" in row.keys() else None,
         "created_at": row["created_at"],
     }
-
 
 def validate_payload(data, partial=False):
     cleaned = {}
@@ -120,6 +126,19 @@ def validate_payload(data, partial=False):
     elif not partial:
         cleaned["review"] = ""
 
+    if "favorite_rank" in data:
+        raw = data.get("favorite_rank")
+        if raw in (None, "", 0):
+            cleaned["favorite_rank"] = None
+        else:
+            try:
+                rank = int(raw)
+            except (TypeError, ValueError):
+                return None, "favorite_rank must be a whole number between 1 and 5."
+            if rank < 1 or rank > 5:
+                return None, "favorite_rank must be between 1 and 5."
+            cleaned["favorite_rank"] = rank
+
     return cleaned, None
 
 
@@ -153,7 +172,7 @@ def create_item():
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO items (title, genre, status, rating, poster_url, review) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO items (title, genre, status, rating, poster_url, review, favorite_rank) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             cleaned["title"],
             cleaned["genre"],
@@ -161,6 +180,7 @@ def create_item():
             cleaned["rating"],
             cleaned["poster_url"],
             cleaned["review"],
+            cleaned.get("favorite_rank"),
         ),
     )
     db.commit()
@@ -183,8 +203,16 @@ def update_item(item_id):
     merged = row_to_dict(existing)
     merged.update(cleaned)
 
+    # If this item is being assigned a rank (1-5), that rank can only belong
+    # to one item at a time — bump whoever currently holds it back to unranked.
+    if "favorite_rank" in cleaned and cleaned["favorite_rank"] is not None:
+        db.execute(
+            "UPDATE items SET favorite_rank = NULL WHERE favorite_rank = ? AND id != ?",
+            (cleaned["favorite_rank"], item_id),
+        )
+
     db.execute(
-        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ?, review = ? WHERE id = ?",
+        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ?, review = ?, favorite_rank = ? WHERE id = ?",
         (
             merged["title"],
             merged["genre"],
@@ -192,6 +220,7 @@ def update_item(item_id):
             merged["rating"],
             merged["poster_url"],
             merged["review"],
+            merged["favorite_rank"],
             item_id,
         ),
     )
