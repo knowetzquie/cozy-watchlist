@@ -60,6 +60,7 @@ def init_db():
             poster_url TEXT NOT NULL DEFAULT '',
             review TEXT NOT NULL DEFAULT '',
             favorite_rank INTEGER DEFAULT NULL,
+            favorite_note TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
@@ -72,6 +73,8 @@ def init_db():
         conn.execute("ALTER TABLE items ADD COLUMN review TEXT NOT NULL DEFAULT ''")
     if "favorite_rank" not in existing_columns:
         conn.execute("ALTER TABLE items ADD COLUMN favorite_rank INTEGER DEFAULT NULL")
+    if "favorite_note" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN favorite_note TEXT NOT NULL DEFAULT ''")
     conn.commit()
     conn.close()
 
@@ -86,6 +89,7 @@ def row_to_dict(row):
         "poster_url": row["poster_url"] if "poster_url" in row.keys() else "",
         "review": row["review"] if "review" in row.keys() else "",
         "favorite_rank": row["favorite_rank"] if "favorite_rank" in row.keys() else None,
+        "favorite_note": row["favorite_note"] if "favorite_note" in row.keys() else "",
         "created_at": row["created_at"],
     }
 
@@ -139,6 +143,9 @@ def validate_payload(data, partial=False):
                 return None, "favorite_rank must be between 1 and 5."
             cleaned["favorite_rank"] = rank
 
+    if "favorite_note" in data:
+        cleaned["favorite_note"] = (data.get("favorite_note") or "").strip()[:120]
+
     return cleaned, None
 
 
@@ -172,7 +179,7 @@ def create_item():
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO items (title, genre, status, rating, poster_url, review, favorite_rank) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO items (title, genre, status, rating, poster_url, review, favorite_rank, favorite_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (
             cleaned["title"],
             cleaned["genre"],
@@ -181,6 +188,7 @@ def create_item():
             cleaned["poster_url"],
             cleaned["review"],
             cleaned.get("favorite_rank"),
+            cleaned.get("favorite_note", ""),
         ),
     )
     db.commit()
@@ -212,8 +220,7 @@ def update_item(item_id):
         )
 
     db.execute(
-        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ?, review = ?, favorite_rank = ? WHERE id = ?",
-        (
+        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ?, review = ?, favorite_rank = ?, favorite_note = ? WHERE id = ?",        (
             merged["title"],
             merged["genre"],
             merged["status"],
@@ -221,7 +228,7 @@ def update_item(item_id):
             merged["poster_url"],
             merged["review"],
             merged["favorite_rank"],
-            item_id,
+            merged["favorite_note"],            item_id,
         ),
     )
     db.commit()

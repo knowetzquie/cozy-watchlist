@@ -102,6 +102,7 @@ export default function App() {
           items={items}
           onAssign={(id, rank) => handleUpdate(id, { favorite_rank: rank })}
           onRemove={(id) => handleUpdate(id, { favorite_rank: null })}
+          onUpdateNote={(id, note) => handleUpdate(id, { favorite_note: note })}
         />
         {showForm && (
           <AddItemForm onAdd={handleAdd} onClose={() => setShowForm(false)} />
