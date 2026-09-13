@@ -94,6 +94,7 @@ select {
   max-width: 42ch;
   margin-left: auto;
   margin-right: auto;
+  font-family: "Michroma", sans-serif;
 }
 
 .monoton-regular {
@@ -456,12 +457,39 @@ select {
 }
 
 .ticket {
+  position: relative;
+}
+
+.ticket__clip {
   display: flex;
   background: var(--card);
   border: 1px solid var(--card-edge);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+}
+
+/* Punched circular notches, like a torn movie ticket stub */
+.ticket::before,
+.ticket::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-grain);
+  border: 1px solid var(--card-edge);
+  z-index: 2;
+}
+
+.ticket::before {
+  left: -9px;
+}
+
+.ticket::after {
+  right: -9px;
 }
 
 .ticket__stub {
@@ -578,7 +606,10 @@ select {
 }
 
 .top-five__header h2 {
-  font-size: 1.3rem;
+  font-family: "Monoton", system-ui;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  font-size: 1.6rem;
   color: var(--accent-dark);
 }
 
