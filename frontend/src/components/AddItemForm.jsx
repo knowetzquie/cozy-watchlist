@@ -8,6 +8,8 @@ const EMPTY = {
   status: "plan to watch",
   rating: 0,
   poster_url: "",
+  tmdb_id: null,
+  media_type: null,
 };
 
 export default function AddItemForm({ onAdd, onClose }) {
@@ -66,6 +68,8 @@ export default function AddItemForm({ onAdd, onClose }) {
       title: suggestion.title,
       genre: suggestion.genre || f.genre,
       poster_url: suggestion.poster_url || "",
+      tmdb_id: suggestion.tmdb_id || null,
+      media_type: suggestion.media_type || null,
     }));
     setSuggestions([]);
     setShowSuggestions(false);
@@ -106,6 +110,8 @@ export default function AddItemForm({ onAdd, onClose }) {
                   ...f,
                   title: e.target.value,
                   poster_url: "",
+                  tmdb_id: null,
+                  media_type: null,
                 }));
                 setShowSuggestions(true);
               }}

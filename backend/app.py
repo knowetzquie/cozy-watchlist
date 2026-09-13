@@ -61,6 +61,8 @@ def init_db():
             review TEXT NOT NULL DEFAULT '',
             favorite_rank INTEGER DEFAULT NULL,
             favorite_note TEXT NOT NULL DEFAULT '',
+            tmdb_id INTEGER DEFAULT NULL,
+            media_type TEXT DEFAULT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
@@ -75,6 +77,10 @@ def init_db():
         conn.execute("ALTER TABLE items ADD COLUMN favorite_rank INTEGER DEFAULT NULL")
     if "favorite_note" not in existing_columns:
         conn.execute("ALTER TABLE items ADD COLUMN favorite_note TEXT NOT NULL DEFAULT ''")
+    if "tmdb_id" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN tmdb_id INTEGER DEFAULT NULL")
+    if "media_type" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN media_type TEXT DEFAULT NULL")
     conn.commit()
     conn.close()
 
@@ -90,6 +96,8 @@ def row_to_dict(row):
         "review": row["review"] if "review" in row.keys() else "",
         "favorite_rank": row["favorite_rank"] if "favorite_rank" in row.keys() else None,
         "favorite_note": row["favorite_note"] if "favorite_note" in row.keys() else "",
+        "tmdb_id": row["tmdb_id"] if "tmdb_id" in row.keys() else None,
+        "media_type": row["media_type"] if "media_type" in row.keys() else None,        
         "created_at": row["created_at"],
     }
 
@@ -146,6 +154,14 @@ def validate_payload(data, partial=False):
     if "favorite_note" in data:
         cleaned["favorite_note"] = (data.get("favorite_note") or "").strip()[:120]
 
+    if "tmdb_id" in data:
+        raw_id = data.get("tmdb_id")
+        cleaned["tmdb_id"] = int(raw_id) if raw_id not in (None, "") else None
+
+    if "media_type" in data:
+        mt = (data.get("media_type") or "").strip().lower()
+        cleaned["media_type"] = mt if mt in ("movie", "tv") else None
+
     return cleaned, None
 
 
@@ -179,7 +195,7 @@ def create_item():
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO items (title, genre, status, rating, poster_url, review, favorite_rank, favorite_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO items (title, genre, status, rating, poster_url, review, favorite_rank, favorite_note, tmdb_id, media_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             cleaned["title"],
             cleaned["genre"],
@@ -189,6 +205,8 @@ def create_item():
             cleaned["review"],
             cleaned.get("favorite_rank"),
             cleaned.get("favorite_note", ""),
+            cleaned.get("tmdb_id"),
+            cleaned.get("media_type"),
         ),
     )
     db.commit()
@@ -228,7 +246,8 @@ def update_item(item_id):
             merged["poster_url"],
             merged["review"],
             merged["favorite_rank"],
-            merged["favorite_note"],            item_id,
+            merged["favorite_note"],
+            item_id,
         ),
     )
     db.commit()
@@ -319,17 +338,71 @@ def search_titles():
 
         poster_path = item.get("poster_path")
 
-        results.append({
-            "title": title,
-            "year": year,
-            "kind": kind_label,
-            "genre": ", ".join(genre_names[:2]),
-            "poster_url": f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else "",
-        })
+        results.append(
+            {
+                "tmdb_id": item.get("id"),
+                "media_type": media_type,
+                "title": title,
+                "year": year,
+                "kind": kind_label,
+                "genre": ", ".join(genre_names[:2]),
+                "poster_url": f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else "",
+            }
+        )
 
     return jsonify(results)
 
+@app.route("/api/title-details/<int:tmdb_id>", methods=["GET"])
+def title_details(tmdb_id):
+    media_type = (request.args.get("media_type") or "movie").strip().lower()
+    if media_type not in ("movie", "tv"):
+        media_type = "movie"
 
+    if not TMDB_API_KEY:
+        return jsonify({"error": "TMDB_API_KEY is not set on the server."}), 500
+
+    try:
+        resp = requests.get(
+            f"{TMDB_BASE}/{media_type}/{tmdb_id}",
+            params={"api_key": TMDB_API_KEY, "append_to_response": "credits"},
+            timeout=5,
+        )
+        if resp.status_code == 404:
+            return jsonify({"error": "Title not found."}), 404
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException:
+        return jsonify({"error": "Could not reach the movie database."}), 502
+
+    title = data.get("title") or data.get("name") or ""
+    date = data.get("release_date") or data.get("first_air_date") or ""
+    year = date[:4] if date else None
+    genres = [g["name"] for g in data.get("genres", [])]
+    poster_path = data.get("poster_path")
+
+    credits = data.get("credits", {})
+    cast = [c["name"] for c in credits.get("cast", [])[:6]]
+
+    if media_type == "movie":
+        directors = [
+            c["name"] for c in credits.get("crew", []) if c.get("job") == "Director"
+        ]
+    else:
+        directors = [c.get("name") for c in data.get("created_by", [])]
+
+    return jsonify(
+        {
+            "title": title,
+            "year": year,
+            "genres": genres,
+            "overview": data.get("overview") or "",
+            "poster_url": f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else "",
+            "directors": directors,
+            "cast": cast,
+            "runtime": data.get("runtime"),
+            "vote_average": data.get("vote_average"),
+        }
+    )
 if __name__ == "__main__":
     init_db()
     app.run(debug=True, port=5000)

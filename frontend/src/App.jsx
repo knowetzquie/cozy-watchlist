@@ -4,6 +4,7 @@ import FilterTabs from "./components/FilterTabs.jsx";
 import AddItemForm from "./components/AddItemForm.jsx";
 import WatchlistItem from "./components/WatchlistItem.jsx";
 import TopFive from "./components/Topfive.jsx";
+import TitleDetailModal from "./components/TitleDetailModal.jsx";
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -11,6 +12,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [detailItem, setDetailItem] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +88,7 @@ export default function App() {
     <div className="page">
       <header className="masthead">
         <div className="masthead__title-group">
-          <h1>The Watchlist</h1>
+          <h1>Watchlist</h1>
           <p>Everything you're watching, want to watch, or already loved.</p>
         </div>
         <button
@@ -103,6 +105,7 @@ export default function App() {
           onAssign={(id, rank) => handleUpdate(id, { favorite_rank: rank })}
           onRemove={(id) => handleUpdate(id, { favorite_rank: null })}
           onUpdateNote={(id, note) => handleUpdate(id, { favorite_note: note })}
+          onOpenDetails={setDetailItem}
         />
         {showForm && (
           <AddItemForm onAdd={handleAdd} onClose={() => setShowForm(false)} />
@@ -133,11 +136,22 @@ export default function App() {
                 item={item}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
+                onOpenDetails={setDetailItem}
               />
             ))}
           </ul>
         )}
       </main>
+
+      {detailItem && (
+        <TitleDetailModal
+          item={detailItem}
+          onClose={() => setDetailItem(null)}
+          onBackfill={(id, tmdb_id, media_type) =>
+            handleUpdate(id, { tmdb_id, media_type })
+          }
+        />
+      )}
     </div>
   );
 }

@@ -2,7 +2,13 @@ import { useState } from "react";
 
 const RANKS = [1, 2, 3, 4, 5];
 
-export default function TopFive({ items, onAssign, onRemove, onUpdateNote }) {
+export default function TopFive({
+  items,
+  onAssign,
+  onRemove,
+  onUpdateNote,
+  onOpenDetails,
+}) {
   const [editing, setEditing] = useState(false);
 
   const byRank = {};
@@ -34,9 +40,11 @@ export default function TopFive({ items, onAssign, onRemove, onUpdateNote }) {
   return (
     <section className="top-five">
       <div className="top-five__header">
-        <h2>Top 5 of All Time</h2>
+        <h2>Elite Five</h2>
         {!hasAny && !editing && (
-          <p className="top-five__hint">Click "Edit" to pick your all-time favorites.</p>
+          <p className="top-five__hint">
+            Click "Edit" to pick your all-time favorites.
+          </p>
         )}
         <button
           className="btn btn--ghost btn--tiny top-five__edit-btn"
@@ -56,10 +64,37 @@ export default function TopFive({ items, onAssign, onRemove, onUpdateNote }) {
               {item ? (
                 <>
                   <div className="top-five__poster-wrap">
-                    {item.poster_url ? (
-                      <img src={item.poster_url} alt="" className="top-five__poster" />
+                    {editing ? (
+                      item.poster_url ? (
+                        <img
+                          src={item.poster_url}
+                          alt=""
+                          className="top-five__poster"
+                        />
+                      ) : (
+                        <div className="top-five__poster top-five__poster--empty">
+                          🎬
+                        </div>
+                      )
                     ) : (
-                      <div className="top-five__poster top-five__poster--empty">🎬</div>
+                      <button
+                        className="top-five__poster-btn"
+                        onClick={() => onOpenDetails(item)}
+                        aria-label={`View details for ${item.title}`}
+                        title="View details"
+                      >
+                        {item.poster_url ? (
+                          <img
+                            src={item.poster_url}
+                            alt=""
+                            className="top-five__poster"
+                          />
+                        ) : (
+                          <div className="top-five__poster top-five__poster--empty">
+                            🎬
+                          </div>
+                        )}
+                      </button>
                     )}
                   </div>
                   <p className="top-five__title">{item.title}</p>
@@ -71,7 +106,9 @@ export default function TopFive({ items, onAssign, onRemove, onUpdateNote }) {
                       placeholder="Add a short note…"
                       defaultValue={item.favorite_note || ""}
                       maxLength={80}
-                      onBlur={(e) => onUpdateNote(item.id, e.target.value.trim())}
+                      onBlur={(e) =>
+                        onUpdateNote(item.id, e.target.value.trim())
+                      }
                     />
                   ) : (
                     item.favorite_note && (
@@ -126,7 +163,9 @@ export default function TopFive({ items, onAssign, onRemove, onUpdateNote }) {
                   ))}
                 </select>
               ) : (
-                <div className="top-five__poster top-five__poster--placeholder">+</div>
+                <div className="top-five__poster top-five__poster--placeholder">
+                  +
+                </div>
               )}
             </div>
           );

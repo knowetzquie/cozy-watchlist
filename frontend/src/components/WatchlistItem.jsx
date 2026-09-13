@@ -1,7 +1,12 @@
 import { useState } from "react";
 import StarRating from "./StarRating.jsx";
 
-export default function WatchlistItem({ item, onUpdate, onDelete }) {
+export default function WatchlistItem({
+  item,
+  onUpdate,
+  onDelete,
+  onOpenDetails,
+}) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editingReview, setEditingReview] = useState(false);
   const [draft, setDraft] = useState(item.review || "");
@@ -27,11 +32,22 @@ export default function WatchlistItem({ item, onUpdate, onDelete }) {
         <div className="ticket__inner">
           <div className="ticket__body">
             <div className="ticket__main">
-              {item.poster_url ? (
-                <img src={item.poster_url} alt="" className="ticket__poster" />
-              ) : (
-                <div className="ticket__poster ticket__poster--empty">🎬</div>
-              )}
+              <button
+                className="ticket__poster-btn"
+                onClick={() => onOpenDetails(item)}
+                aria-label={`View details for ${item.title}`}
+                title="View details"
+              >
+                {item.poster_url ? (
+                  <img
+                    src={item.poster_url}
+                    alt=""
+                    className="ticket__poster"
+                  />
+                ) : (
+                  <div className="ticket__poster ticket__poster--empty">🎬</div>
+                )}
+              </button>
               <div>
                 <p className="ticket__title">{item.title}</p>
                 {item.genre && <p className="ticket__genre">{item.genre}</p>}
@@ -44,7 +60,8 @@ export default function WatchlistItem({ item, onUpdate, onDelete }) {
                 value={item.favorite_rank || ""}
                 onChange={(e) =>
                   onUpdate(item.id, {
-                    favorite_rank: e.target.value === "" ? null : Number(e.target.value),
+                    favorite_rank:
+                      e.target.value === "" ? null : Number(e.target.value),
                   })
                 }
                 title="Top 5 of All Time"
@@ -75,10 +92,16 @@ export default function WatchlistItem({ item, onUpdate, onDelete }) {
               {confirmingDelete ? (
                 <span className="confirm-delete">
                   Remove?
-                  <button className="btn btn--tiny btn--danger" onClick={() => onDelete(item.id)}>
+                  <button
+                    className="btn btn--tiny btn--danger"
+                    onClick={() => onDelete(item.id)}
+                  >
                     Yes
                   </button>
-                  <button className="btn btn--tiny btn--ghost" onClick={() => setConfirmingDelete(false)}>
+                  <button
+                    className="btn btn--tiny btn--ghost"
+                    onClick={() => setConfirmingDelete(false)}
+                  >
                     No
                   </button>
                 </span>
@@ -127,12 +150,18 @@ export default function WatchlistItem({ item, onUpdate, onDelete }) {
                   </div>
                 </>
               ) : item.review ? (
-                <button className="review__existing" onClick={() => setEditingReview(true)}>
+                <button
+                  className="review__existing"
+                  onClick={() => setEditingReview(true)}
+                >
                   <span className="review__label">Your review</span>
                   <span className="review__text">{item.review}</span>
                 </button>
               ) : (
-                <button className="review__prompt" onClick={() => setEditingReview(true)}>
+                <button
+                  className="review__prompt"
+                  onClick={() => setEditingReview(true)}
+                >
                   + Write a review
                 </button>
               )}

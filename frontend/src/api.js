@@ -46,4 +46,10 @@ export const api = {
       `${BASE_URL}/search-titles?q=${encodeURIComponent(query)}`,
     ).then(handle);
   },
+
+  getTitleDetails(tmdbId, mediaType) {
+    return fetch(
+      `${BASE_URL}/title-details/${tmdbId}?media_type=${encodeURIComponent(mediaType || "movie")}`,
+    ).then(handle);
+  },
 };
