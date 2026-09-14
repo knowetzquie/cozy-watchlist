@@ -23,6 +23,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   margin: 0;
@@ -141,7 +145,14 @@ select {
 }
 
 .btn:active {
-  transform: scale(0.97);
+  transform: scale(0.99);
+}
+
+.btn {
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .btn--primary {
@@ -1446,4 +1457,437 @@ select {
 
 .genre-list li span:last-child {
   color: var(--text-soft);
+}
+
+/* ---------- Profile page (Letterboxd-style) ---------- */
+
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.profile-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.profile-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 2px solid var(--card-edge);
+  background: var(--card);
+  font-size: 2.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  flex-shrink: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.profile-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-edit__upload-btn {
+  display: inline-flex;
+  align-self: flex-start;
+  cursor: pointer;
+}
+
+.profile-edit__upload-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #a5402c;
+}
+
+.profile-top__main {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-top__name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.profile-top__name {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.profile-top__bio {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-soft);
+  line-height: 1.45;
+  max-width: 46ch;
+}
+
+.profile-top__stats {
+  display: flex;
+  gap: 1.5rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.profile-top__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.1rem;
+}
+
+.profile-top__stat span {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.profile-top__stat label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-soft);
+}
+
+.profile-edit__name {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  background: #1c1338;
+  max-width: 320px;
+}
+
+.profile-edit__bio {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text);
+  background: #1c1338;
+  resize: vertical;
+  max-width: 420px;
+}
+
+.profile-edit__avatars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.profile-edit__avatar-choice {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-edit__avatar-choice--active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.4);
+}
+
+.profile-edit__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* ---------- Horizontal poster rows ---------- */
+
+.profile-row-section__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-soft);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.5rem;
+  margin: 0 0 0.85rem;
+}
+
+.profile-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.profile-row__poster-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 100px;
+}
+
+.profile-row__poster {
+  width: 100px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--card-edge);
+  box-shadow: var(--shadow);
+}
+
+.profile-row__poster--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.activity-item strong {
+  color: var(--text);
+}
+
+.activity-item__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+  .profile-top {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .profile-top__stats {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: 0.75rem;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .profile-top__bio {
+    max-width: 100%;
+  }
+}
+
+/* ---------- Smooth tab/filter transitions ---------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.22s;
+  animation-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* ---------- Rating bar chart (animated, with hover tooltip) ---------- */
+
+.rating-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.1rem;
+  height: 140px;
+  padding-top: 1.8rem;
+}
+
+.rating-chart__col {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  max-width: 70px;
+}
+
+.rating-chart__bar {
+  width: 60%;
+  max-width: 40px;
+  background: var(--gold);
+  border-radius: 4px 4px 0 0;
+  height: var(--bar-height, 0%);
+  animation: growBar 0.6s ease;
+  transition: filter 0.15s ease;
+}
+
+@keyframes growBar {
+  from {
+    height: 0%;
+  }
+  to {
+    height: var(--bar-height, 0%);
+  }
+}
+
+.rating-chart__col:hover .rating-chart__bar {
+  filter: brightness(1.2);
+}
+
+.rating-chart__label {
+  margin-top: 0.45rem;
+  font-size: 0.68rem;
+  color: var(--gold);
+  letter-spacing: -0.02em;
+}
+
+.rating-chart__tooltip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  background: var(--espresso);
+  color: #fff;
+  font-size: 0.68rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  z-index: 5;
+}
+
+.rating-chart__col:hover .rating-chart__tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* ---------- Diary log (month-grouped activity) ---------- */
+
+.diary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.diary__group {
+  display: flex;
+  gap: 0.9rem;
+  border-bottom: 1px solid var(--card-edge);
+  padding-bottom: 0.9rem;
+}
+
+.diary__group:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.diary__month-tab {
+  flex-shrink: 0;
+  width: 46px;
+  height: 34px;
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-dark);
+  position: relative;
+}
+
+.diary__month-tab::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--card-edge);
+  box-shadow: 20px 0 0 var(--card-edge);
+}
+
+.diary__entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.diary__entry {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.diary__day {
+  width: 20px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  text-align: right;
+}
+
+.diary__title {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.diary__title:hover {
+  color: var(--accent-dark);
+  text-decoration: underline;
 }

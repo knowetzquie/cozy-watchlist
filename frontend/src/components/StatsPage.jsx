@@ -58,27 +58,30 @@ export default function StatsPage({ items }) {
       </div>
 
       <div className="stats-section">
-        <h3>Rating breakdown</h3>
+        <h3>Ratings</h3>
         {ratedItems.length === 0 ? (
           <p className="stats-empty">Rate a few titles to see this fill in.</p>
         ) : (
-          <div className="rating-bars">
-            {[5, 4, 3, 2, 1].map((r) => (
-              <div className="rating-bar-row" key={r}>
-                <span className="rating-bar-row__label">{"★".repeat(r)}</span>
-                <div className="rating-bar-row__track">
+          <div className="rating-chart">
+            {[1, 2, 3, 4, 5].map((r) => {
+              const count = ratingCounts[r - 1];
+              const pct = ratedItems.length
+                ? Math.round((count / ratedItems.length) * 100)
+                : 0;
+              const heightPct = (count / maxRatingCount) * 100;
+              return (
+                <div className="rating-chart__col" key={r}>
+                  <div className="rating-chart__tooltip">
+                    {count} film{count !== 1 ? "s" : ""} · {pct}%
+                  </div>
                   <div
-                    className="rating-bar-row__fill"
-                    style={{
-                      width: `${(ratingCounts[r - 1] / maxRatingCount) * 100}%`,
-                    }}
+                    className="rating-chart__bar"
+                    style={{ "--bar-height": `${heightPct}%` }}
                   />
+                  <span className="rating-chart__label">{"★".repeat(r)}</span>
                 </div>
-                <span className="rating-bar-row__count">
-                  {ratingCounts[r - 1]}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

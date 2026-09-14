@@ -439,10 +439,12 @@ def update_profile():
 
     db.execute(
         "UPDATE profile SET name = ?, bio = ?, avatar = ? WHERE id = 1",
-        (name.strip()[:60], bio.strip()[:200], avatar.strip()[:4]),
+        (name.strip()[:60], bio.strip()[:200], avatar.strip()[:3_000_000]),
     )
     db.commit()
-    return jsonify({"name": name.strip()[:60], "bio": bio.strip()[:200], "avatar": avatar.strip()[:4]})
+    return jsonify(
+        {"name": name.strip()[:60], "bio": bio.strip()[:200], "avatar": avatar.strip()[:3_000_000]}
+    )
 
 if __name__ == "__main__":
     init_db()

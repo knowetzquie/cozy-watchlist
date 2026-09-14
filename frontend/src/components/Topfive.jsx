@@ -40,7 +40,7 @@ export default function TopFive({
   return (
     <section className="top-five">
       <div className="top-five__header">
-        <h2>Elite Five</h2>
+        <h2>5 Favorite Films</h2>
         {!hasAny && !editing && (
           <p className="top-five__hint">
             Click "Edit" to pick your all-time favorites.

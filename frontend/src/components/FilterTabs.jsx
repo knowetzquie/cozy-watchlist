@@ -1,7 +1,7 @@
 const TABS = [
   { key: "all", label: "All" },
   { key: "watching", label: "Watching" },
-  { key: "plan to watch", label: "Plan to Watch" },
+  { key: "plan to watch", label: "WatchList" },
   { key: "completed", label: "Completed" },
 ];
 

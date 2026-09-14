@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 
-const AVATAR_OPTIONS = ["🎬", "🎥", "🍿", "📽️", "🎞️", "🧑‍🎤", "👾", "🐉", "🌙", "⭐"];
+const AVATAR_OPTIONS = [
+  "🎬",
+  "🎥",
+  "🍿",
+  "📽️",
+  "🎞️",
+  "🧑‍🎤",
+  "👾",
+  "🐉",
+  "🌙",
+  "⭐",
+];
+const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024; // 1.5MB, generous for a small profile photo
+
+function isImageAvatar(value) {
+  return typeof value === "string" && value.startsWith("data:image");
+}
 
 export default function ProfilePage({ items, onOpenDetails }) {
   const [profile, setProfile] = useState(null);
@@ -11,6 +27,7 @@ export default function ProfilePage({ items, onOpenDetails }) {
   const [draftBio, setDraftBio] = useState("");
   const [draftAvatar, setDraftAvatar] = useState("🎬");
   const [saving, setSaving] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -46,17 +63,37 @@ export default function ProfilePage({ items, onOpenDetails }) {
     }
   }
 
+  function handlePhotoSelect(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    setUploadError("");
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please choose an image file.");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setUploadError("That image is too large — please pick one under 1.5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => setDraftAvatar(reader.result);
+    reader.onerror = () =>
+      setUploadError("Couldn't read that file — try another image.");
+    reader.readAsDataURL(file);
+  }
+
   const completed = items.filter((i) => i.status === "completed");
 
   const now = new Date();
-  const isSameMonth = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  };
-  const isSameYear = (dateStr) => new Date(dateStr).getFullYear() === now.getFullYear();
-
-  const filmsThisMonth = completed.filter((i) => isSameMonth(i.created_at)).length;
-  const filmsThisYear = completed.filter((i) => isSameYear(i.created_at)).length;
+  const isSameYear = (dateStr) =>
+    new Date(dateStr).getFullYear() === now.getFullYear();
+  const filmsThisYear = completed.filter((i) =>
+    isSameYear(i.created_at),
+  ).length;
 
   const topFive = items
     .filter((i) => i.favorite_rank)
@@ -66,26 +103,49 @@ export default function ProfilePage({ items, onOpenDetails }) {
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 6);
 
-  const activity = [...items]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 8);
+  const diary = [...completed].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at),
+  );
+
+  const diaryGroups = [];
+  for (const item of diary) {
+    const d = new Date(item.created_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const label = d.toLocaleString("default", { month: "short" }).toUpperCase();
+    let group = diaryGroups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, label, entries: [] };
+      diaryGroups.push(group);
+    }
+    group.entries.push({ ...item, day: d.getDate() });
+  }
 
   if (loading) return <p className="empty-state">Loading profile…</p>;
 
   return (
     <div className="profile-page">
-      <div className="profile-header">
+      <div className="profile-top">
         <button
           className="profile-avatar"
-          onClick={() => setEditing((e) => !e)}
-          title="Edit profile"
+          onClick={() => editing && setDraftAvatar((a) => a)}
+          title={editing ? "Pick an avatar below" : undefined}
         >
-          {editing ? draftAvatar : profile.avatar}
+          {isImageAvatar(editing ? draftAvatar : profile.avatar) ? (
+            <img
+              src={editing ? draftAvatar : profile.avatar}
+              alt=""
+              className="profile-avatar__img"
+            />
+          ) : editing ? (
+            draftAvatar
+          ) : (
+            profile.avatar
+          )}
         </button>
 
-        <div className="profile-header__info">
+        <div className="profile-top__main">
           {editing ? (
-            <div className="profile-edit">
+            <>
               <input
                 className="profile-edit__name"
                 value={draftName}
@@ -101,13 +161,29 @@ export default function ProfilePage({ items, onOpenDetails }) {
                 rows={2}
                 maxLength={200}
               />
+
+              <label className="btn btn--ghost btn--tiny profile-edit__upload-btn">
+                Upload photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                  hidden
+                />
+              </label>
+              {uploadError && (
+                <p className="profile-edit__upload-error">{uploadError}</p>
+              )}
+
               <div className="profile-edit__avatars">
                 {AVATAR_OPTIONS.map((a) => (
                   <button
                     key={a}
                     type="button"
                     className={`profile-edit__avatar-choice ${
-                      draftAvatar === a ? "profile-edit__avatar-choice--active" : ""
+                      draftAvatar === a
+                        ? "profile-edit__avatar-choice--active"
+                        : ""
                     }`}
                     onClick={() => setDraftAvatar(a)}
                   >
@@ -115,118 +191,151 @@ export default function ProfilePage({ items, onOpenDetails }) {
                   </button>
                 ))}
               </div>
-              <div className="profile-edit__actions">
-                <button
-                  className="btn btn--ghost btn--tiny"
-                  onClick={() => {
-                    setDraftName(profile.name);
-                    setDraftBio(profile.bio);
-                    setDraftAvatar(profile.avatar);
-                    setEditing(false);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="btn btn--primary btn--tiny"
-                  onClick={saveProfile}
-                  disabled={saving}
-                >
-                  {saving ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </div>
+            </>
           ) : (
             <>
-              <h2 className="profile-header__name">{profile.name}</h2>
-              {profile.bio && <p className="profile-header__bio">{profile.bio}</p>}
-              <button className="profile-header__edit-link" onClick={() => setEditing(true)}>
-                Edit profile
-              </button>
+              <div className="profile-top__name-row">
+                <h2 className="profile-top__name">{profile.name}</h2>
+                <button
+                  className="btn btn--ghost btn--tiny"
+                  onClick={() => setEditing(true)}
+                >
+                  Edit Profile
+                </button>
+              </div>
+              {profile.bio && <p className="profile-top__bio">{profile.bio}</p>}
             </>
           )}
+
+          {editing && (
+            <div className="profile-edit__actions">
+              <button
+                className="btn btn--ghost btn--tiny"
+                onClick={() => {
+                  setDraftName(profile.name);
+                  setDraftBio(profile.bio);
+                  setDraftAvatar(profile.avatar);
+                  setEditing(false);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn--primary btn--tiny"
+                onClick={saveProfile}
+                disabled={saving}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="profile-top__stats">
+          <div className="profile-top__stat">
+            <span>{completed.length}</span>
+            <label>Films</label>
+          </div>
+          <div className="profile-top__stat">
+            <span>{filmsThisYear}</span>
+            <label>This Year</label>
+          </div>
+          <div className="profile-top__stat">
+            <span>{topFive.length}</span>
+            <label>Top 5</label>
+          </div>
         </div>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <span className="stat-card__value">{completed.length}</span>
-          <span className="stat-card__label">Films</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-card__value">{filmsThisMonth}</span>
-          <span className="stat-card__label">This month</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-card__value">{filmsThisYear}</span>
-          <span className="stat-card__label">This year</span>
-        </div>
-      </div>
-
-      <div className="stats-section">
-        <h3>Top 5</h3>
+      <section className="profile-row-section">
+        <h3 className="profile-row-section__label">Favorite Films</h3>
         {topFive.length === 0 ? (
-          <p className="stats-empty">Pick your Top 5 favorites from the Watchlist tab.</p>
+          <p className="stats-empty">
+            Pick your Top 5 favorites from the Watchlist tab.
+          </p>
         ) : (
-          <div className="profile-mini-grid">
+          <div className="profile-row">
             {topFive.map((item) => (
               <button
                 key={item.id}
-                className="profile-mini-poster-btn"
+                className="profile-row__poster-btn"
                 onClick={() => onOpenDetails(item)}
               >
                 {item.poster_url ? (
-                  <img src={item.poster_url} alt="" className="profile-mini-poster" />
+                  <img
+                    src={item.poster_url}
+                    alt=""
+                    className="profile-row__poster"
+                  />
                 ) : (
-                  <div className="profile-mini-poster profile-mini-poster--empty">🎬</div>
+                  <div className="profile-row__poster profile-row__poster--empty">
+                    🎬
+                  </div>
                 )}
               </button>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="stats-section">
-        <h3>Recently watched</h3>
+      <section className="profile-row-section">
+        <h3 className="profile-row-section__label">Recently Watched</h3>
         {recentlyWatched.length === 0 ? (
           <p className="stats-empty">Nothing marked Completed yet.</p>
         ) : (
-          <div className="profile-mini-grid">
+          <div className="profile-row">
             {recentlyWatched.map((item) => (
               <button
                 key={item.id}
-                className="profile-mini-poster-btn"
+                className="profile-row__poster-btn"
                 onClick={() => onOpenDetails(item)}
               >
                 {item.poster_url ? (
-                  <img src={item.poster_url} alt="" className="profile-mini-poster" />
+                  <img
+                    src={item.poster_url}
+                    alt=""
+                    className="profile-row__poster"
+                  />
                 ) : (
-                  <div className="profile-mini-poster profile-mini-poster--empty">🎬</div>
+                  <div className="profile-row__poster profile-row__poster--empty">
+                    🎬
+                  </div>
                 )}
               </button>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="stats-section">
-        <h3>Activity</h3>
-        <ul className="activity-list">
-          {activity.map((item) => (
-            <li key={item.id} className="activity-item">
-              <span className="activity-item__dot" />
-              <span>
-                {item.status === "completed"
-                  ? "Completed "
-                  : item.status === "watching"
-                  ? "Started watching "
-                  : "Added "}
-                <strong>{item.title}</strong>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <section className="profile-row-section">
+        <h3 className="profile-row-section__label">Activity</h3>
+        {diaryGroups.length === 0 ? (
+          <p className="stats-empty">
+            Mark titles Completed to build your diary.
+          </p>
+        ) : (
+          <div className="diary">
+            {diaryGroups.map((group) => (
+              <div className="diary__group" key={group.key}>
+                <div className="diary__month-tab">{group.label}</div>
+                <ul className="diary__entries">
+                  {group.entries.map((item) => (
+                    <li key={item.id} className="diary__entry">
+                      <span className="diary__day">{item.day}</span>
+                      <button
+                        className="diary__title"
+                        onClick={() => onOpenDetails(item)}
+                      >
+                        {item.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

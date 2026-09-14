@@ -19,6 +19,24 @@ export default function App() {
   const [detailItem, setDetailItem] = useState(null);
   const [page, setPage] = useState("watchlist");
 
+  // Wraps a state update in the browser's View Transitions API when
+  // available, so switching tabs/filters crossfades smoothly instead of
+  // the page snapping instantly to its new height/content.
+  function smoothly(update) {
+    if (document.startViewTransition) {
+      document.startViewTransition(update);
+    } else {
+      update();
+    }
+  }
+
+  function changeFilter(next) {
+    smoothly(() => setFilter(next));
+  }
+
+  function changePage(next) {
+    smoothly(() => setPage(next));
+  }
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -98,7 +116,7 @@ export default function App() {
           className="btn btn--primary"
           onClick={() => {
             if (page !== "watchlist") {
-              setPage("watchlist");
+              changePage("watchlist");
               setShowForm(true);
             } else {
               setShowForm((s) => !s);
@@ -119,7 +137,7 @@ export default function App() {
           <button
             key={p.key}
             className={`page-nav__btn ${page === p.key ? "page-nav__btn--active" : ""}`}
-            onClick={() => setPage(p.key)}
+            onClick={() => changePage(p.key)}
           >
             {p.label}
           </button>
@@ -152,7 +170,11 @@ export default function App() {
               />
             )}
 
-            <FilterTabs active={filter} onChange={setFilter} counts={counts} />
+            <FilterTabs
+              active={filter}
+              onChange={changeFilter}
+              counts={counts}
+            />
 
             {loading ? (
               <p className="empty-state">Loading your shelf…</p>
