@@ -5,6 +5,10 @@ import AddItemForm from "./components/AddItemForm.jsx";
 import WatchlistItem from "./components/WatchlistItem.jsx";
 import TopFive from "./components/Topfive.jsx";
 import TitleDetailModal from "./components/TitleDetailModal.jsx";
+import PosterGrid from "./components/PosterGrid.jsx";
+import ReviewsPage from "./components/ReviewsPage.jsx";
+import StatsPage from "./components/StatsPage.jsx";
+import ProfilePage from "./components/ProfilePage.jsx";
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -13,6 +17,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [detailItem, setDetailItem] = useState(null);
+  const [page, setPage] = useState("watchlist");
 
   useEffect(() => {
     let cancelled = false;
@@ -61,8 +66,6 @@ export default function App() {
     );
     try {
       await api.update(id, changes);
-      // Assigning a Top 5 rank can bump another item's rank on the server
-      // (only one item may hold a given rank), so re-sync the full list.
       if ("favorite_rank" in changes) {
         const fresh = await api.list();
         setItems(fresh);
@@ -88,58 +91,105 @@ export default function App() {
     <div className="page">
       <header className="masthead">
         <div className="masthead__title-group">
-          <h1>Watchlist</h1>
+          <h1>The Watchlist</h1>
           <p>Everything you're watching, want to watch, or already loved.</p>
         </div>
         <button
           className="btn btn--primary"
-          onClick={() => setShowForm((s) => !s)}
+          onClick={() => {
+            if (page !== "watchlist") {
+              setPage("watchlist");
+              setShowForm(true);
+            } else {
+              setShowForm((s) => !s);
+            }
+          }}
         >
-          {showForm ? "Close" : "+ Add title"}
+          {showForm && page === "watchlist" ? "Close" : "+ Add title"}
         </button>
       </header>
 
-      <main className="content">
-        <TopFive
-          items={items}
-          onAssign={(id, rank) => handleUpdate(id, { favorite_rank: rank })}
-          onRemove={(id) => handleUpdate(id, { favorite_rank: null })}
-          onUpdateNote={(id, note) => handleUpdate(id, { favorite_note: note })}
-          onOpenDetails={setDetailItem}
-        />
-        {showForm && (
-          <AddItemForm onAdd={handleAdd} onClose={() => setShowForm(false)} />
-        )}
-        <FilterTabs active={filter} onChange={setFilter} counts={counts} />
+      <nav className="page-nav">
+        {[
+          { key: "watchlist", label: "Watchlist" },
+          { key: "reviews", label: "Reviews" },
+          { key: "stats", label: "Stats" },
+          { key: "profile", label: "Profile" },
+        ].map((p) => (
+          <button
+            key={p.key}
+            className={`page-nav__btn ${page === p.key ? "page-nav__btn--active" : ""}`}
+            onClick={() => setPage(p.key)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </nav>
 
+      <main className="content">
         {error && (
           <p className="banner banner--error">
             {error} — make sure the backend is running on port 5000.
           </p>
         )}
 
-        {loading ? (
-          <p className="empty-state">Loading your shelf…</p>
-        ) : visibleItems.length === 0 ? (
-          <div className="empty-state">
-            <p>
-              {filter === "all"
-                ? "Nothing on the shelf yet. Add the first title."
-                : `Nothing in "${filter}" yet.`}
-            </p>
-          </div>
-        ) : (
-          <ul className="ticket-list">
-            {visibleItems.map((item) => (
-              <WatchlistItem
-                key={item.id}
-                item={item}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-                onOpenDetails={setDetailItem}
+        {page === "watchlist" && (
+          <>
+            <TopFive
+              items={items}
+              onAssign={(id, rank) => handleUpdate(id, { favorite_rank: rank })}
+              onRemove={(id) => handleUpdate(id, { favorite_rank: null })}
+              onUpdateNote={(id, note) =>
+                handleUpdate(id, { favorite_note: note })
+              }
+              onOpenDetails={setDetailItem}
+            />
+
+            {showForm && (
+              <AddItemForm
+                onAdd={handleAdd}
+                onClose={() => setShowForm(false)}
               />
-            ))}
-          </ul>
+            )}
+
+            <FilterTabs active={filter} onChange={setFilter} counts={counts} />
+
+            {loading ? (
+              <p className="empty-state">Loading your shelf…</p>
+            ) : visibleItems.length === 0 ? (
+              <div className="empty-state">
+                <p>
+                  {filter === "all"
+                    ? "Nothing on the shelf yet. Add the first title."
+                    : `Nothing in "${filter}" yet.`}
+                </p>
+              </div>
+            ) : filter === "all" ? (
+              <ul className="ticket-list">
+                {visibleItems.map((item) => (
+                  <WatchlistItem
+                    key={item.id}
+                    item={item}
+                    onUpdate={handleUpdate}
+                    onDelete={handleDelete}
+                    onOpenDetails={setDetailItem}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <PosterGrid items={visibleItems} onOpenDetails={setDetailItem} />
+            )}
+          </>
+        )}
+
+        {page === "reviews" && (
+          <ReviewsPage items={items} onOpenDetails={setDetailItem} />
+        )}
+
+        {page === "stats" && <StatsPage items={items} />}
+
+        {page === "profile" && (
+          <ProfilePage items={items} onOpenDetails={setDetailItem} />
         )}
       </main>
 

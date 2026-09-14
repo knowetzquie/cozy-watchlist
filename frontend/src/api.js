@@ -1,5 +1,5 @@
 const BASE_URL = "http://localhost:5000/api";
-
+const detailsCache = new Map();
 async function handle(response) {
   if (!response.ok) {
     let message = "Something went wrong talking to the server.";
@@ -48,8 +48,29 @@ export const api = {
   },
 
   getTitleDetails(tmdbId, mediaType) {
+    const key = `${tmdbId}:${mediaType || "movie"}`;
+    if (detailsCache.has(key)) {
+      return Promise.resolve(detailsCache.get(key));
+    }
     return fetch(
       `${BASE_URL}/title-details/${tmdbId}?media_type=${encodeURIComponent(mediaType || "movie")}`,
-    ).then(handle);
+    )
+      .then(handle)
+      .then((data) => {
+        detailsCache.set(key, data);
+        return data;
+      });
+  },
+
+  getProfile() {
+    return fetch(`${BASE_URL}/profile`).then(handle);
+  },
+
+  updateProfile(changes) {
+    return fetch(`${BASE_URL}/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changes),
+    }).then(handle);
   },
 };

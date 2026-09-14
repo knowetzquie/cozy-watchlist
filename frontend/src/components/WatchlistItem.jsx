@@ -48,7 +48,7 @@ export default function WatchlistItem({
                   <div className="ticket__poster ticket__poster--empty">🎬</div>
                 )}
               </button>
-              <div>
+              <div className="ticket__text">
                 <p className="ticket__title">{item.title}</p>
                 {item.genre && <p className="ticket__genre">{item.genre}</p>}
               </div>

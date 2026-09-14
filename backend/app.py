@@ -81,9 +81,21 @@ def init_db():
         conn.execute("ALTER TABLE items ADD COLUMN tmdb_id INTEGER DEFAULT NULL")
     if "media_type" not in existing_columns:
         conn.execute("ALTER TABLE items ADD COLUMN media_type TEXT DEFAULT NULL")
-    conn.commit()
-    conn.close()
 
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profile (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            name TEXT NOT NULL DEFAULT 'Movie Lover',
+            bio TEXT NOT NULL DEFAULT '',
+            avatar TEXT NOT NULL DEFAULT '🎬'
+        )
+        """
+    )
+    conn.execute(
+        "INSERT OR IGNORE INTO profile (id, name, bio, avatar) VALUES (1, 'Movie Lover', '', '🎬')"
+    )
+    conn.commit()
 
 def row_to_dict(row):
     return {
@@ -268,7 +280,7 @@ def delete_item(item_id):
 
 
 _genre_cache = {}
-
+_details_cache = {}
 
 def get_genre_map():
     if _genre_cache:
@@ -358,6 +370,10 @@ def title_details(tmdb_id):
     if media_type not in ("movie", "tv"):
         media_type = "movie"
 
+    cache_key = f"{media_type}:{tmdb_id}"
+    if cache_key in _details_cache:
+        return jsonify(_details_cache[cache_key])
+
     if not TMDB_API_KEY:
         return jsonify({"error": "TMDB_API_KEY is not set on the server."}), 500
 
@@ -390,19 +406,44 @@ def title_details(tmdb_id):
     else:
         directors = [c.get("name") for c in data.get("created_by", [])]
 
-    return jsonify(
-        {
-            "title": title,
-            "year": year,
-            "genres": genres,
-            "overview": data.get("overview") or "",
-            "poster_url": f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else "",
-            "directors": directors,
-            "cast": cast,
-            "runtime": data.get("runtime"),
-            "vote_average": data.get("vote_average"),
-        }
+    result = {
+        "title": title,
+        "year": year,
+        "genres": genres,
+        "overview": data.get("overview") or "",
+        "poster_url": f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else "",
+        "directors": directors,
+        "cast": cast,
+        "runtime": data.get("runtime"),
+        "vote_average": data.get("vote_average"),
+    }
+    _details_cache[cache_key] = result
+    return jsonify(result)
+
+@app.route("/api/profile", methods=["GET"])
+def get_profile():
+    db = get_db()
+    row = db.execute("SELECT * FROM profile WHERE id = 1").fetchone()
+    return jsonify({"name": row["name"], "bio": row["bio"], "avatar": row["avatar"]})
+
+
+@app.route("/api/profile", methods=["PATCH"])
+def update_profile():
+    data = request.get_json(silent=True) or {}
+    db = get_db()
+    row = db.execute("SELECT * FROM profile WHERE id = 1").fetchone()
+
+    name = (data.get("name") if "name" in data else row["name"]) or "Movie Lover"
+    bio = (data.get("bio") if "bio" in data else row["bio"]) or ""
+    avatar = (data.get("avatar") if "avatar" in data else row["avatar"]) or "🎬"
+
+    db.execute(
+        "UPDATE profile SET name = ?, bio = ?, avatar = ? WHERE id = 1",
+        (name.strip()[:60], bio.strip()[:200], avatar.strip()[:4]),
     )
+    db.commit()
+    return jsonify({"name": name.strip()[:60], "bio": bio.strip()[:200], "avatar": avatar.strip()[:4]})
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True, port=5000)
