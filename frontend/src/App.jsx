@@ -208,8 +208,9 @@ export default function App() {
           <ReviewsPage items={items} onOpenDetails={setDetailItem} />
         )}
 
-        {page === "stats" && <StatsPage items={items} />}
-
+        {page === "stats" && (
+          <StatsPage items={items} onOpenDetails={setDetailItem} />
+        )}
         {page === "profile" && (
           <ProfilePage items={items} onOpenDetails={setDetailItem} />
         )}
