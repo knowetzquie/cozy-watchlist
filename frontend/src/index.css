@@ -1145,6 +1145,8 @@ select {
   line-height: 1.5;
   color: var(--text);
   margin: 0 0 0.75rem;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .modal__meta {
@@ -1163,13 +1165,13 @@ select {
   opacity: 0.85;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 620px) {
   .modal__body {
     flex-direction: column;
   }
 
   .modal__poster-col {
-    width: 110px;
+    width: 130px;
     margin: 0 auto;
   }
 }
@@ -1675,9 +1677,7 @@ select {
 
 .profile-top__stats {
   display: flex;
-  gap: 1.5rem;
-  padding-left: 1rem;
-  border-left: 1px solid var(--line);
+  gap: 0.75rem;
   flex-shrink: 0;
 }
 
@@ -1686,7 +1686,15 @@ select {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.1rem;
+  gap: 0.15rem;
+  background: rgba(36, 26, 69, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.55rem 0.9rem;
+  min-width: 62px;
 }
 
 .profile-top__stat span {
@@ -1777,12 +1785,32 @@ select {
 }
 
 .profile-row__poster-btn {
+  position: relative;
   border: none;
   background: none;
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
   width: 100px;
+}
+
+.profile-row__rating-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.18rem;
+  background: rgba(10, 5, 25, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.42rem;
+  border-radius: 999px;
+  pointer-events: none;
 }
 
 .profile-row__poster {
@@ -1799,6 +1827,51 @@ select {
   align-items: center;
   justify-content: center;
   font-size: 1.3rem;
+}
+
+.people-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.1rem;
+}
+
+.people-row__person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 84px;
+  text-align: center;
+}
+
+.people-row__photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--card-edge);
+  box-shadow: var(--shadow);
+  border: 2px solid var(--card-edge);
+}
+
+.people-row__photo--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.people-row__name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.people-row__count {
+  font-size: 0.62rem;
+  color: var(--text-soft);
 }
 
 .activity-list {

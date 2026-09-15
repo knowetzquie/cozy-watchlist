@@ -397,14 +397,27 @@ def title_details(tmdb_id):
     poster_path = data.get("poster_path")
 
     credits = data.get("credits", {})
-    cast = [c["name"] for c in credits.get("cast", [])[:6]]
+
+    def person_photo(person):
+        path = person.get("profile_path")
+        return f"{TMDB_IMAGE_BASE}{path}" if path else None
+
+    cast = [
+        {"name": c["name"], "photo": person_photo(c)}
+        for c in credits.get("cast", [])[:6]
+    ]
 
     if media_type == "movie":
         directors = [
-            c["name"] for c in credits.get("crew", []) if c.get("job") == "Director"
+            {"name": c["name"], "photo": person_photo(c)}
+            for c in credits.get("crew", [])
+            if c.get("job") == "Director"
         ]
     else:
-        directors = [c.get("name") for c in data.get("created_by", [])]
+        directors = [
+            {"name": c.get("name"), "photo": person_photo(c)}
+            for c in data.get("created_by", [])
+        ]
 
     result = {
         "title": title,

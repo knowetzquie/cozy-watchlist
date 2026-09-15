@@ -28,6 +28,11 @@ export default function ProfilePage({ items, onOpenDetails }) {
   const [draftAvatar, setDraftAvatar] = useState("🎬");
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [peopleStats, setPeopleStats] = useState({
+    directors: [],
+    actors: [],
+    loading: true,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +52,78 @@ export default function ProfilePage({ items, onOpenDetails }) {
       cancelled = true;
     };
   }, []);
+  useEffect(() => {
+    let cancelled = false;
 
+    async function loadPeople() {
+      const withTmdb = items.filter((i) => i.tmdb_id);
+      if (withTmdb.length === 0) {
+        if (!cancelled)
+          setPeopleStats({ directors: [], actors: [], loading: false });
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        withTmdb.map((i) =>
+          api.getTitleDetails(i.tmdb_id, i.media_type || "movie"),
+        ),
+      );
+      if (cancelled) return;
+
+      const directorMap = new Map();
+      const actorMap = new Map();
+
+      results.forEach((r) => {
+        if (r.status !== "fulfilled") return;
+        const data = r.value;
+
+        (data.directors || []).forEach((d) => {
+          if (!d?.name) return;
+          const entry = directorMap.get(d.name) || {
+            name: d.name,
+            photo: d.photo,
+            count: 0,
+          };
+          entry.count += 1;
+          if (!entry.photo && d.photo) entry.photo = d.photo;
+          directorMap.set(d.name, entry);
+        });
+
+        (data.cast || []).forEach((c) => {
+          if (!c?.name) return;
+          const entry = actorMap.get(c.name) || {
+            name: c.name,
+            photo: c.photo,
+            count: 0,
+          };
+          entry.count += 1;
+          if (!entry.photo && c.photo) entry.photo = c.photo;
+          actorMap.set(c.name, entry);
+        });
+      });
+
+      const topDirectors = [...directorMap.values()]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      const topActors = [...actorMap.values()]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      if (!cancelled) {
+        setPeopleStats({
+          directors: topDirectors,
+          actors: topActors,
+          loading: false,
+        });
+      }
+    }
+
+    setPeopleStats((s) => ({ ...s, loading: true }));
+    loadPeople();
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
   async function saveProfile() {
     setSaving(true);
     try {
@@ -277,6 +353,52 @@ export default function ProfilePage({ items, onOpenDetails }) {
           </div>
         )}
       </section>
+
+<section className="profile-row-section">
+  <h3 className="profile-row-section__label">Top Directors</h3>
+  {peopleStats.loading ? (
+    <p className="stats-empty">Crunching your favorite directors…</p>
+  ) : peopleStats.directors.length === 0 ? (
+    <p className="stats-empty">Add titles matched to TMDB to see this.</p>
+  ) : (
+    <div className="people-row">
+      {peopleStats.directors.map((d) => (
+        <div className="people-row__person" key={d.name}>
+          {d.photo ? (
+            <img src={d.photo} alt="" className="people-row__photo" />
+          ) : (
+            <div className="people-row__photo people-row__photo--empty">🎬</div>
+          )}
+          <span className="people-row__name">{d.name}</span>
+          <span className="people-row__count">{d.count} title{d.count !== 1 ? "s" : ""}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
+
+<section className="profile-row-section">
+  <h3 className="profile-row-section__label">Top Cast</h3>
+  {peopleStats.loading ? (
+    <p className="stats-empty">Crunching your favorite actors…</p>
+  ) : peopleStats.actors.length === 0 ? (
+    <p className="stats-empty">Add titles matched to TMDB to see this.</p>
+  ) : (
+    <div className="people-row">
+      {peopleStats.actors.map((a) => (
+        <div className="people-row__person" key={a.name}>
+          {a.photo ? (
+            <img src={a.photo} alt="" className="people-row__photo" />
+          ) : (
+            <div className="people-row__photo people-row__photo--empty">🎭</div>
+          )}
+          <span className="people-row__name">{a.name}</span>
+          <span className="people-row__count">{a.count} title{a.count !== 1 ? "s" : ""}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
 
       <section className="profile-row-section">
         <h3 className="profile-row-section__label">Recently Watched</h3>

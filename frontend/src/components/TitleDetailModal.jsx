@@ -118,13 +118,14 @@ export default function TitleDetailModal({ item, onClose, onBackfill }) {
                     <strong>
                       Director{details.directors.length > 1 ? "s" : ""}:
                     </strong>{" "}
-                    {details.directors.join(", ")}
+                    {details.directors.map((d) => d.name).join(", ")}
                   </p>
                 )}
 
                 {details.cast?.length > 0 && (
                   <p className="modal__meta">
-                    <strong>Cast:</strong> {details.cast.join(", ")}
+                    <strong>Cast:</strong>{" "}
+                    {details.cast.map((c) => c.name).join(", ")}
                   </p>
                 )}
 
