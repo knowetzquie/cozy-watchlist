@@ -1,5 +1,6 @@
 import { useState } from "react";
 import StarRating from "./StarRating.jsx";
+import LogEntryModal from "./LogEntryModal.jsx";
 
 export default function WatchlistItem({
   item,
@@ -8,21 +9,9 @@ export default function WatchlistItem({
   onOpenDetails,
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [editingReview, setEditingReview] = useState(false);
-  const [draft, setDraft] = useState(item.review || "");
-  const [saving, setSaving] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
 
   const isCompleted = item.status === "completed";
-
-  async function saveReview() {
-    setSaving(true);
-    try {
-      await onUpdate(item.id, { review: draft.trim() });
-      setEditingReview(false);
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <li className={`ticket ticket--${item.status.replace(/\s+/g, "-")}`}>
@@ -120,39 +109,10 @@ export default function WatchlistItem({
 
           {isCompleted && (
             <div className="review">
-              {editingReview ? (
-                <>
-                  <textarea
-                    className="review__input"
-                    placeholder="What did you think of it?"
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    rows={3}
-                    autoFocus
-                  />
-                  <div className="review__actions">
-                    <button
-                      className="btn btn--ghost btn--tiny"
-                      onClick={() => {
-                        setDraft(item.review || "");
-                        setEditingReview(false);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="btn btn--primary btn--tiny"
-                      onClick={saveReview}
-                      disabled={saving}
-                    >
-                      {saving ? "Saving…" : "Save review"}
-                    </button>
-                  </div>
-                </>
-              ) : item.review ? (
+              {item.review ? (
                 <button
                   className="review__existing"
-                  onClick={() => setEditingReview(true)}
+                  onClick={() => setShowLogModal(true)}
                 >
                   <span className="review__label">Your review</span>
                   <span className="review__text">{item.review}</span>
@@ -160,7 +120,7 @@ export default function WatchlistItem({
               ) : (
                 <button
                   className="review__prompt"
-                  onClick={() => setEditingReview(true)}
+                  onClick={() => setShowLogModal(true)}
                 >
                   + Write a review
                 </button>
@@ -169,6 +129,21 @@ export default function WatchlistItem({
           )}
         </div>
       </div>
+
+      {showLogModal && (
+        <LogEntryModal
+          item={item}
+          onClose={() => setShowLogModal(false)}
+          onSave={async (changes) => {
+            await onUpdate(item.id, changes);
+            setShowLogModal(false);
+          }}
+          onDelete={() => {
+            setShowLogModal(false);
+            onDelete(item.id);
+          }}
+        />
+      )}
     </li>
   );
 }

@@ -12,7 +12,7 @@ const EMPTY = {
   media_type: null,
 };
 
-export default function AddItemForm({ onAdd, onClose }) {
+export default function AddItemForm({ onAdd }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -86,7 +86,6 @@ export default function AddItemForm({ onAdd, onClose }) {
     try {
       await onAdd(form);
       setForm(EMPTY);
-      onClose();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -215,7 +214,11 @@ export default function AddItemForm({ onAdd, onClose }) {
         </label>
 
         <div className="index-card__actions">
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => setForm(EMPTY)}
+          >
             Cancel
           </button>
           <button type="submit" className="btn btn--primary" disabled={saving}>

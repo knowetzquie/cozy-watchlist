@@ -52,6 +52,7 @@ export default function ProfilePage({ items, onOpenDetails }) {
       cancelled = true;
     };
   }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -124,6 +125,7 @@ export default function ProfilePage({ items, onOpenDetails }) {
       cancelled = true;
     };
   }, [items]);
+
   async function saveProfile() {
     setSaving(true);
     try {
@@ -163,12 +165,13 @@ export default function ProfilePage({ items, onOpenDetails }) {
   }
 
   const completed = items.filter((i) => i.status === "completed");
+  const watchedDate = (item) => item.watched_at || item.created_at;
 
   const now = new Date();
   const isSameYear = (dateStr) =>
     new Date(dateStr).getFullYear() === now.getFullYear();
   const filmsThisYear = completed.filter((i) =>
-    isSameYear(i.created_at),
+    isSameYear(watchedDate(i)),
   ).length;
 
   const topFive = items
@@ -176,16 +179,16 @@ export default function ProfilePage({ items, onOpenDetails }) {
     .sort((a, b) => a.favorite_rank - b.favorite_rank);
 
   const recentlyWatched = [...completed]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .sort((a, b) => new Date(watchedDate(b)) - new Date(watchedDate(a)))
     .slice(0, 6);
 
   const diary = [...completed].sort(
-    (a, b) => new Date(b.created_at) - new Date(a.created_at),
+    (a, b) => new Date(watchedDate(b)) - new Date(watchedDate(a)),
   );
 
   const diaryGroups = [];
   for (const item of diary) {
-    const d = new Date(item.created_at);
+    const d = new Date(watchedDate(item));
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     const label = d.toLocaleString("default", { month: "short" }).toUpperCase();
     let group = diaryGroups.find((g) => g.key === key);
@@ -348,57 +351,70 @@ export default function ProfilePage({ items, onOpenDetails }) {
                     🎬
                   </div>
                 )}
+                {item.rating > 0 && (
+                  <span className="profile-row__rating-badge">
+                    ★ {item.rating}
+                  </span>
+                )}
               </button>
             ))}
           </div>
         )}
       </section>
 
-<section className="profile-row-section">
-  <h3 className="profile-row-section__label">Top Directors</h3>
-  {peopleStats.loading ? (
-    <p className="stats-empty">Crunching your favorite directors…</p>
-  ) : peopleStats.directors.length === 0 ? (
-    <p className="stats-empty">Add titles matched to TMDB to see this.</p>
-  ) : (
-    <div className="people-row">
-      {peopleStats.directors.map((d) => (
-        <div className="people-row__person" key={d.name}>
-          {d.photo ? (
-            <img src={d.photo} alt="" className="people-row__photo" />
-          ) : (
-            <div className="people-row__photo people-row__photo--empty">🎬</div>
-          )}
-          <span className="people-row__name">{d.name}</span>
-          <span className="people-row__count">{d.count} title{d.count !== 1 ? "s" : ""}</span>
-        </div>
-      ))}
-    </div>
-  )}
-</section>
+      <section className="profile-row-section">
+        <h3 className="profile-row-section__label">Top Directors</h3>
+        {peopleStats.loading ? (
+          <p className="stats-empty">Crunching your favorite directors…</p>
+        ) : peopleStats.directors.length === 0 ? (
+          <p className="stats-empty">Add titles matched to TMDB to see this.</p>
+        ) : (
+          <div className="people-row">
+            {peopleStats.directors.map((d) => (
+              <div className="people-row__person" key={d.name}>
+                {d.photo ? (
+                  <img src={d.photo} alt="" className="people-row__photo" />
+                ) : (
+                  <div className="people-row__photo people-row__photo--empty">
+                    🎬
+                  </div>
+                )}
+                <span className="people-row__name">{d.name}</span>
+                <span className="people-row__count">
+                  {d.count} title{d.count !== 1 ? "s" : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
-<section className="profile-row-section">
-  <h3 className="profile-row-section__label">Top Cast</h3>
-  {peopleStats.loading ? (
-    <p className="stats-empty">Crunching your favorite actors…</p>
-  ) : peopleStats.actors.length === 0 ? (
-    <p className="stats-empty">Add titles matched to TMDB to see this.</p>
-  ) : (
-    <div className="people-row">
-      {peopleStats.actors.map((a) => (
-        <div className="people-row__person" key={a.name}>
-          {a.photo ? (
-            <img src={a.photo} alt="" className="people-row__photo" />
-          ) : (
-            <div className="people-row__photo people-row__photo--empty">🎭</div>
-          )}
-          <span className="people-row__name">{a.name}</span>
-          <span className="people-row__count">{a.count} title{a.count !== 1 ? "s" : ""}</span>
-        </div>
-      ))}
-    </div>
-  )}
-</section>
+      <section className="profile-row-section">
+        <h3 className="profile-row-section__label">Top Cast</h3>
+        {peopleStats.loading ? (
+          <p className="stats-empty">Crunching your favorite actors…</p>
+        ) : peopleStats.actors.length === 0 ? (
+          <p className="stats-empty">Add titles matched to TMDB to see this.</p>
+        ) : (
+          <div className="people-row">
+            {peopleStats.actors.map((a) => (
+              <div className="people-row__person" key={a.name}>
+                {a.photo ? (
+                  <img src={a.photo} alt="" className="people-row__photo" />
+                ) : (
+                  <div className="people-row__photo people-row__photo--empty">
+                    🎭
+                  </div>
+                )}
+                <span className="people-row__name">{a.name}</span>
+                <span className="people-row__count">
+                  {a.count} title{a.count !== 1 ? "s" : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="profile-row-section">
         <h3 className="profile-row-section__label">Recently Watched</h3>
@@ -422,6 +438,11 @@ export default function ProfilePage({ items, onOpenDetails }) {
                   <div className="profile-row__poster profile-row__poster--empty">
                     🎬
                   </div>
+                )}
+                {item.rating > 0 && (
+                  <span className="profile-row__rating-badge">
+                    ★ {item.rating}
+                  </span>
                 )}
               </button>
             ))}

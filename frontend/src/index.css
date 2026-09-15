@@ -1077,6 +1077,13 @@ select {
   font-size: 2rem;
 }
 
+.modal__info {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* ---------- Stat detail modal (transparent, poster grid) ---------- */
+
 .stat-modal-overlay {
   background: rgba(10, 5, 25, 0.25);
   backdrop-filter: blur(3px);
@@ -1100,6 +1107,220 @@ select {
   font-weight: 400;
   font-size: 0.95rem;
   color: var(--text-soft);
+}
+
+/* ---------- Diary log/edit modal (Letterboxd-style) ---------- */
+
+.modal--log {
+  max-width: 640px;
+}
+
+.log-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.1rem;
+}
+
+.log-modal__header h2 {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+.log-modal__close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: var(--text);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.log-modal__body {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.log-modal__poster-col {
+  flex-shrink: 0;
+  width: 140px;
+}
+
+.log-modal__poster {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: block;
+}
+
+.log-modal__poster--empty {
+  aspect-ratio: 2 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  border-radius: 8px;
+  font-size: 2rem;
+}
+
+.log-modal__main {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.log-modal__title {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.3rem;
+  color: var(--text);
+}
+
+.log-modal__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.log-modal__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.log-modal__checkbox input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+
+.log-modal__date {
+  background: var(--espresso);
+  border: 1px solid var(--card-edge);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color-scheme: dark;
+}
+
+.log-modal__review {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  background: var(--espresso);
+  border: 1px solid var(--card-edge);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.log-modal__review:focus {
+  outline: none;
+  border-color: var(--accent-dark);
+}
+
+.log-modal__footer-row {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.log-modal__rating,
+.log-modal__like {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.log-modal__rating-label {
+  font-size: 0.7rem;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.log-modal__rating-stars {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.log-modal__star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.3rem;
+  color: var(--gold);
+  padding: 0;
+  line-height: 1;
+}
+
+.log-modal__heart {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.3rem;
+  padding: 0;
+  line-height: 1;
+  filter: grayscale(1);
+  opacity: 0.6;
+  transition:
+    filter 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.log-modal__heart--active {
+  filter: none;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.log-modal__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.log-modal__confirm-delete {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+@media (max-width: 480px) {
+  .log-modal__body {
+    flex-direction: column;
+  }
+
+  .log-modal__poster-col {
+    width: 130px;
+    margin: 0 auto;
+  }
 }
 
 .modal__title {
@@ -1387,6 +1608,7 @@ select {
   text-align: center;
   gap: 0.25rem;
 }
+
 .stat-card--clickable {
   font-family: inherit;
   color: inherit;
@@ -1430,6 +1652,7 @@ select {
   padding-bottom: 0.5rem;
   margin: 0 0 0.85rem;
 }
+
 .stats-empty {
   color: var(--text-soft);
   font-size: 0.85rem;
@@ -1587,15 +1810,6 @@ select {
 .genre-legend__pct {
   color: var(--text-soft);
   flex-shrink: 0;
-}
-
-.genre-list li span:first-child {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.genre-list li span:last-child {
-  color: var(--text-soft);
 }
 
 /* ---------- Profile page (Letterboxd-style) ---------- */
@@ -2021,16 +2235,19 @@ select {
   width: 130px;
   height: 130px;
 }
+
 .completion-ring__svg {
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
 }
+
 .completion-ring__bg {
   fill: none;
   stroke: var(--card-edge);
   stroke-width: 10;
 }
+
 .completion-ring__value {
   fill: none;
   stroke: var(--accent);
@@ -2038,6 +2255,7 @@ select {
   stroke-linecap: round;
   transition: stroke-dashoffset 0.8s ease;
 }
+
 .completion-ring__label {
   position: absolute;
   inset: 0;
@@ -2046,6 +2264,7 @@ select {
   align-items: center;
   justify-content: center;
 }
+
 .completion-ring__label span {
   font-family: "Fraunces", Georgia, serif;
   font-size: 1.3rem;
@@ -2053,12 +2272,14 @@ select {
   color: var(--accent-dark);
   line-height: 1.1;
 }
+
 .completion-ring__label small {
   font-size: 0.65rem;
   color: var(--text-soft);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
 .completion-wrap {
   display: flex;
   align-items: center;
@@ -2186,6 +2407,7 @@ select {
   height: 140px;
   padding-top: 1.8rem;
 }
+
 .monthly-chart__col {
   position: relative;
   flex: 1;
@@ -2195,6 +2417,7 @@ select {
   justify-content: flex-end;
   height: 100%;
 }
+
 .monthly-chart__bar {
   width: 60%;
   max-width: 22px;
@@ -2204,14 +2427,17 @@ select {
   animation: growBar 0.6s ease;
   transition: filter 0.15s ease;
 }
+
 .monthly-chart__col:hover .monthly-chart__bar {
   filter: brightness(1.2);
 }
+
 .monthly-chart__label {
   margin-top: 0.45rem;
   font-size: 0.62rem;
   color: var(--text-soft);
 }
+
 .monthly-chart__tooltip {
   position: absolute;
   top: 0;
@@ -2230,10 +2456,12 @@ select {
     transform 0.15s ease;
   z-index: 5;
 }
+
 .monthly-chart__col:hover .monthly-chart__tooltip {
   opacity: 1;
   transform: translateX(-50%) scale(1);
 }
+
 /* ---------- Diary log (month-grouped activity) ---------- */
 
 .diary {

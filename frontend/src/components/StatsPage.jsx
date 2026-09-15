@@ -69,6 +69,7 @@ export default function StatsPage({ items, onOpenDetails }) {
 
   const total = items.length;
   const completedItems = items.filter((i) => i.status === "completed");
+  const watchedDate = (item) => item.watched_at || item.created_at;
   const watchingItems = items.filter((i) => i.status === "watching");
   const plannedItems = items.filter((i) => i.status === "plan to watch");
   const completionPct = total ? (completedItems.length / total) * 100 : 0;
@@ -128,7 +129,7 @@ export default function StatsPage({ items, onOpenDetails }) {
   // Monthly activity (completed titles per month, this calendar year)
   const monthlyCounts = new Array(12).fill(0);
   completedItems.forEach((i) => {
-    const d = new Date(i.created_at);
+    const d = new Date(watchedDate(i));
     if (d.getFullYear() === currentYear) {
       monthlyCounts[d.getMonth()] += 1;
     }
@@ -141,7 +142,7 @@ export default function StatsPage({ items, onOpenDetails }) {
   const weekKey = (date) => Math.floor(date.getTime() / WEEK_MS);
 
   const activeWeekKeys = new Set(
-    completedItems.map((i) => weekKey(new Date(i.created_at))),
+    completedItems.map((i) => weekKey(new Date(watchedDate(i)))),
   );
   let currentStreak = 0;
   let cursor = weekKey(now);
@@ -163,7 +164,7 @@ export default function StatsPage({ items, onOpenDetails }) {
   }
 
   // This week's Mon–Sun activity, for the streak day row
-  const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
   const isSameDay = (a, b) =>
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
@@ -180,7 +181,9 @@ export default function StatsPage({ items, onOpenDetails }) {
     return {
       key: idx,
       label,
-      active: completedItems.some((i) => isSameDay(new Date(i.created_at), d)),
+      active: completedItems.some((i) =>
+        isSameDay(new Date(watchedDate(i)), d),
+      ),
       isToday: isSameDay(d, now),
       isFuture: d > now,
     };

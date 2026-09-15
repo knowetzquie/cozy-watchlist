@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 import sqlite3
 import os
 import requests
+from datetime import datetime
 
 load_dotenv()
 
@@ -63,6 +64,9 @@ def init_db():
             favorite_note TEXT NOT NULL DEFAULT '',
             tmdb_id INTEGER DEFAULT NULL,
             media_type TEXT DEFAULT NULL,
+            watched_at TEXT DEFAULT NULL,
+            is_rewatch INTEGER NOT NULL DEFAULT 0,
+            liked INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
@@ -81,6 +85,12 @@ def init_db():
         conn.execute("ALTER TABLE items ADD COLUMN tmdb_id INTEGER DEFAULT NULL")
     if "media_type" not in existing_columns:
         conn.execute("ALTER TABLE items ADD COLUMN media_type TEXT DEFAULT NULL")
+    if "watched_at" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN watched_at TEXT DEFAULT NULL")
+    if "is_rewatch" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN is_rewatch INTEGER NOT NULL DEFAULT 0")
+    if "liked" not in existing_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN liked INTEGER NOT NULL DEFAULT 0")
 
     conn.execute(
         """
@@ -109,7 +119,10 @@ def row_to_dict(row):
         "favorite_rank": row["favorite_rank"] if "favorite_rank" in row.keys() else None,
         "favorite_note": row["favorite_note"] if "favorite_note" in row.keys() else "",
         "tmdb_id": row["tmdb_id"] if "tmdb_id" in row.keys() else None,
-        "media_type": row["media_type"] if "media_type" in row.keys() else None,        
+        "media_type": row["media_type"] if "media_type" in row.keys() else None,
+        "watched_at": row["watched_at"] if "watched_at" in row.keys() else None,
+        "is_rewatch": bool(row["is_rewatch"]) if "is_rewatch" in row.keys() else False,
+        "liked": bool(row["liked"]) if "liked" in row.keys() else False,
         "created_at": row["created_at"],
     }
 
@@ -174,6 +187,23 @@ def validate_payload(data, partial=False):
         mt = (data.get("media_type") or "").strip().lower()
         cleaned["media_type"] = mt if mt in ("movie", "tv") else None
 
+    if "watched_at" in data:
+        raw_date = (data.get("watched_at") or "").strip()
+        if not raw_date:
+            cleaned["watched_at"] = None
+        else:
+            try:
+                datetime.strptime(raw_date, "%Y-%m-%d")
+            except ValueError:
+                return None, "watched_at must be a date in YYYY-MM-DD format."
+            cleaned["watched_at"] = raw_date
+
+    if "is_rewatch" in data:
+        cleaned["is_rewatch"] = 1 if data.get("is_rewatch") else 0
+
+    if "liked" in data:
+        cleaned["liked"] = 1 if data.get("liked") else 0
+
     return cleaned, None
 
 
@@ -207,7 +237,7 @@ def create_item():
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO items (title, genre, status, rating, poster_url, review, favorite_rank, favorite_note, tmdb_id, media_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO items (title, genre, status, rating, poster_url, review, favorite_rank, favorite_note, tmdb_id, media_type, watched_at, is_rewatch, liked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             cleaned["title"],
             cleaned["genre"],
@@ -219,6 +249,9 @@ def create_item():
             cleaned.get("favorite_note", ""),
             cleaned.get("tmdb_id"),
             cleaned.get("media_type"),
+            cleaned.get("watched_at"),
+            cleaned.get("is_rewatch", 0),
+            cleaned.get("liked", 0),
         ),
     )
     db.commit()
@@ -250,7 +283,12 @@ def update_item(item_id):
         )
 
     db.execute(
-        "UPDATE items SET title = ?, genre = ?, status = ?, rating = ?, poster_url = ?, review = ?, favorite_rank = ?, favorite_note = ? WHERE id = ?",        (
+        """UPDATE items SET
+            title = ?, genre = ?, status = ?, rating = ?, poster_url = ?,
+            review = ?, favorite_rank = ?, favorite_note = ?, tmdb_id = ?,
+            media_type = ?, watched_at = ?, is_rewatch = ?, liked = ?
+        WHERE id = ?""",
+        (
             merged["title"],
             merged["genre"],
             merged["status"],
@@ -259,6 +297,11 @@ def update_item(item_id):
             merged["review"],
             merged["favorite_rank"],
             merged["favorite_note"],
+            merged["tmdb_id"],
+            merged["media_type"],
+            merged["watched_at"],
+            1 if merged["is_rewatch"] else 0,
+            1 if merged["liked"] else 0,
             item_id,
         ),
     )

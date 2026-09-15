@@ -13,7 +13,6 @@ import ProfilePage from "./components/ProfilePage.jsx";
 export default function App() {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState("all");
-  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [detailItem, setDetailItem] = useState(null);
@@ -112,19 +111,6 @@ export default function App() {
           <h1>The Watchlist</h1>
           <p>Everything you're watching, want to watch, or already loved.</p>
         </div>
-        <button
-          className="btn btn--primary"
-          onClick={() => {
-            if (page !== "watchlist") {
-              changePage("watchlist");
-              setShowForm(true);
-            } else {
-              setShowForm((s) => !s);
-            }
-          }}
-        >
-          {showForm && page === "watchlist" ? "Close" : "+ Add title"}
-        </button>
       </header>
 
       <nav className="page-nav">
@@ -163,12 +149,7 @@ export default function App() {
               onOpenDetails={setDetailItem}
             />
 
-            {showForm && (
-              <AddItemForm
-                onAdd={handleAdd}
-                onClose={() => setShowForm(false)}
-              />
-            )}
+            <AddItemForm onAdd={handleAdd} />
 
             <FilterTabs
               active={filter}
@@ -211,6 +192,7 @@ export default function App() {
         {page === "stats" && (
           <StatsPage items={items} onOpenDetails={setDetailItem} />
         )}
+
         {page === "profile" && (
           <ProfilePage items={items} onOpenDetails={setDetailItem} />
         )}
