@@ -1,4 +1,7 @@
-const BASE_URL = "http://localhost:5000/api";
+const API_ORIGIN =
+  import.meta.env.VITE_API_ORIGIN ||
+  `${window.location.protocol}//${window.location.hostname}:5000`;
+const BASE_URL = `${API_ORIGIN}/api`;
 const detailsCache = new Map();
 async function handle(response) {
   if (!response.ok) {
@@ -64,6 +67,10 @@ export const api = {
 
   getProfile() {
     return fetch(`${BASE_URL}/profile`).then(handle);
+  },
+
+  getProfileTalent() {
+    return fetch(`${BASE_URL}/profile/talent`).then(handle);
   },
 
   updateProfile(changes) {

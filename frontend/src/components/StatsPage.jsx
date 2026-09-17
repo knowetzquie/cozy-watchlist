@@ -63,6 +63,7 @@ function CompletionRing({ pct }) {
 
 export default function StatsPage({ items, onOpenDetails }) {
   const [activeStat, setActiveStat] = useState(null); // { title, items } | null
+  const [showOtherGenres, setShowOtherGenres] = useState(false);
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -100,6 +101,7 @@ export default function StatsPage({ items, onOpenDetails }) {
   const sortedGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]);
   const totalGenreTags = sortedGenres.reduce((sum, [, c]) => sum + c, 0);
   const topGenres = sortedGenres.slice(0, 5);
+  const otherGenres = sortedGenres.slice(5);
   const otherCount = sortedGenres.slice(5).reduce((sum, [, c]) => sum + c, 0);
 
   const donutSlices = topGenres.map(([name, count]) => ({ name, count }));
@@ -136,10 +138,20 @@ export default function StatsPage({ items, onOpenDetails }) {
   });
   const maxMonthlyCount = Math.max(1, ...monthlyCounts);
   const hasMonthlyActivity = monthlyCounts.some((c) => c > 0);
+  const monthlyTotal = monthlyCounts.reduce((sum, count) => sum + count, 0);
 
-  // Watch streak: consecutive weeks with at least one completed title
-  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  const weekKey = (date) => Math.floor(date.getTime() / WEEK_MS);
+  // Use local Monday dates so the streak matches the Mon-Sun row below.
+  const weekKey = (date) => {
+    const mondayDate = new Date(date);
+    const mondayOffset = (mondayDate.getDay() + 6) % 7;
+    mondayDate.setHours(0, 0, 0, 0);
+    mondayDate.setDate(mondayDate.getDate() - mondayOffset);
+    return Date.UTC(
+      mondayDate.getFullYear(),
+      mondayDate.getMonth(),
+      mondayDate.getDate(),
+    );
+  };
 
   const activeWeekKeys = new Set(
     completedItems.map((i) => weekKey(new Date(watchedDate(i)))),
@@ -247,7 +259,7 @@ export default function StatsPage({ items, onOpenDetails }) {
         ))}
       </div>
 
-      <div className="stats-charts-row">
+      <div className="stats-charts-row stats-charts-row--genres">
         <div className="stats-section">
           <h3>Ratings</h3>
           {ratedItems.length === 0 ? (
@@ -267,10 +279,13 @@ export default function StatsPage({ items, onOpenDetails }) {
                     <div className="rating-chart__tooltip">
                       {count} film{count !== 1 ? "s" : ""} · {pct}%
                     </div>
-                    <div
-                      className="rating-chart__bar"
-                      style={{ "--bar-height": `${heightPct}%` }}
-                    />
+                    <div className="rating-chart__bar-wrap">
+                      <span className="rating-chart__count">{count}</span>
+                      <div
+                        className="rating-chart__bar"
+                        style={{ "--bar-height": `${heightPct}%` }}
+                      />
+                    </div>
                     <span className="rating-chart__label">{"★".repeat(r)}</span>
                   </div>
                 );
@@ -295,13 +310,66 @@ export default function StatsPage({ items, onOpenDetails }) {
               </div>
               <ul className="genre-legend">
                 {donutSegments.map((seg) => (
-                  <li key={seg.name}>
+                  <li
+                    className={`genre-legend__item ${
+                      seg.name === "Other" ? "genre-legend__item--other" : ""
+                    }`}
+                    key={seg.name}
+                  >
                     <span
                       className="genre-legend__dot"
                       style={{ background: seg.color }}
                     />
                     <span className="genre-legend__name">{seg.name}</span>
-                    <span className="genre-legend__pct">{seg.pct}%</span>
+                    <span className="genre-legend__count">
+                      {seg.count} title{seg.count !== 1 ? "s" : ""} · {seg.pct}%
+                    </span>
+                    {seg.name === "Other" && (
+                      <button
+                        type="button"
+                        className="genre-legend__expand"
+                        onClick={() => setShowOtherGenres((open) => !open)}
+                        aria-expanded={showOtherGenres}
+                        aria-label={`${showOtherGenres ? "Hide" : "Show"} other genres`}
+                      >
+                        {showOtherGenres ? "-" : "+"}
+                      </button>
+                    )}
+                    {seg.name === "Other" && (
+                      <div
+                        className={`genre-legend__sublist ${
+                          showOtherGenres ? "genre-legend__sublist--open" : ""
+                        }`}
+                        aria-hidden={!showOtherGenres}
+                      >
+                        {otherGenres.map(([name, count], index) => (
+                          <div className="genre-legend__subitem" key={name}>
+                            <span
+                              className="genre-legend__dot"
+                              style={{
+                                background:
+                                  DONUT_COLORS[
+                                    (index + topGenres.length) %
+                                      DONUT_COLORS.length
+                                  ],
+                              }}
+                            />
+                            <span className="genre-legend__subname">
+                              {name}
+                            </span>
+                            <span className="genre-legend__subcount">
+                              {count} title{count !== 1 ? "s" : ""}
+                            </span>
+                            <span className="genre-legend__subpct">
+                              {totalGenreTags
+                                ? Math.round((count / totalGenreTags) * 100)
+                                : 0}
+                              %
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -310,7 +378,7 @@ export default function StatsPage({ items, onOpenDetails }) {
         )}
       </div>
 
-      <div className="stats-charts-row">
+      <div className="stats-charts-row stats-charts-row--details">
         <div className="stats-section">
           <h3>Completion Rate</h3>
           <div className="completion-wrap">
@@ -348,6 +416,11 @@ export default function StatsPage({ items, onOpenDetails }) {
                   {plannedItems.length}
                 </span>
               </li>
+              <li className="completion-nudge">
+                {total - completedItems.length > 0
+                  ? `${total - completedItems.length} title${total - completedItems.length !== 1 ? "s" : ""} to go`
+                  : "Everything completed"}
+              </li>
             </ul>
           </div>
         </div>
@@ -372,6 +445,9 @@ export default function StatsPage({ items, onOpenDetails }) {
                     {day.active ? "🔥" : ""}
                   </span>
                   <span className="week-streak__day-label">{day.label}</span>
+                  <span className="week-streak__today-label">
+                    {day.isToday ? "today" : "\u00a0"}
+                  </span>
                 </div>
               ))}
             </div>
@@ -386,6 +462,9 @@ export default function StatsPage({ items, onOpenDetails }) {
 
       <div className="stats-section">
         <h3>Monthly Activity ({currentYear})</h3>
+        <p className="monthly-chart__summary">
+          {monthlyTotal} title{monthlyTotal !== 1 ? "s" : ""} logged this year
+        </p>
         {!hasMonthlyActivity ? (
           <p className="stats-empty">No completed titles yet this year.</p>
         ) : (

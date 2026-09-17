@@ -10,7 +10,19 @@ const EMPTY = {
   poster_url: "",
   tmdb_id: null,
   media_type: null,
+  year: null,
 };
+
+const QUICK_GENRES = [
+  "Action",
+  "Sci-Fi",
+  "Animation",
+  "Drama",
+  "Comedy",
+  "Thriller",
+  "Horror",
+  "Romance",
+];
 
 export default function AddItemForm({ onAdd }) {
   const [form, setForm] = useState(EMPTY);
@@ -23,6 +35,25 @@ export default function AddItemForm({ onAdd }) {
   const [searchError, setSearchError] = useState("");
   const debounceRef = useRef(null);
   const skipNextSearch = useRef(false);
+
+  async function runSearch(query) {
+    setSearching(true);
+    setSearchError("");
+    try {
+      const results = await api.searchTitles(query);
+      if (results.error) {
+        setSearchError(results.error);
+        setSuggestions([]);
+      } else {
+        setSuggestions(results);
+      }
+    } catch (err) {
+      setSearchError(err.message);
+      setSuggestions([]);
+    } finally {
+      setSearching(false);
+    }
+  }
 
   useEffect(() => {
     if (skipNextSearch.current) {
@@ -39,25 +70,7 @@ export default function AddItemForm({ onAdd }) {
       return;
     }
 
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
-      setSearchError("");
-      try {
-        const results = await api.searchTitles(query);
-        if (results.error) {
-          setSearchError(results.error);
-          setSuggestions([]);
-        } else {
-          setSuggestions(results);
-        }
-      } catch (err) {
-        setSearchError(err.message);
-        setSuggestions([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 400);
-
+    debounceRef.current = setTimeout(() => runSearch(query), 400);
     return () => clearTimeout(debounceRef.current);
   }, [form.title]);
 
@@ -70,9 +83,37 @@ export default function AddItemForm({ onAdd }) {
       poster_url: suggestion.poster_url || "",
       tmdb_id: suggestion.tmdb_id || null,
       media_type: suggestion.media_type || null,
+      year: suggestion.year || null,
     }));
     setSuggestions([]);
     setShowSuggestions(false);
+  }
+
+  function changePoster() {
+    setForm((f) => ({
+      ...f,
+      poster_url: "",
+      tmdb_id: null,
+      media_type: null,
+      year: null,
+    }));
+    setShowSuggestions(true);
+    const query = form.title.trim();
+    if (query.length >= 2) runSearch(query);
+  }
+
+  function toggleGenre(g) {
+    setForm((f) => {
+      const current = f.genre
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const exists = current.some((c) => c.toLowerCase() === g.toLowerCase());
+      const next = exists
+        ? current.filter((c) => c.toLowerCase() !== g.toLowerCase())
+        : [...current, g];
+      return { ...f, genre: next.join(", ") };
+    });
   }
 
   async function handleSubmit(e) {
@@ -93,9 +134,29 @@ export default function AddItemForm({ onAdd }) {
     }
   }
 
+  function handleKeyDown(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setForm(EMPTY);
+      setShowSuggestions(false);
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  }
+
+  const activeGenres = form.genre
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
   return (
-    <form className="index-card" onSubmit={handleSubmit}>
-      <div className="index-card__row">
+    <form
+      className="index-card"
+      onSubmit={handleSubmit}
+      onKeyDown={handleKeyDown}
+    >
+      <div className="index-card__row index-card__row--fields">
         <label className="field field--grow">
           <span>Title</span>
           <div className="title-search">
@@ -111,6 +172,7 @@ export default function AddItemForm({ onAdd }) {
                   poster_url: "",
                   tmdb_id: null,
                   media_type: null,
+                  year: null,
                 }));
                 setShowSuggestions(true);
               }}
@@ -157,7 +219,9 @@ export default function AddItemForm({ onAdd }) {
                       <span className="suggestion__text">
                         <span className="suggestion__title">{s.title}</span>
                         <span className="suggestion__meta">
-                          {[s.kind, s.year].filter(Boolean).join(" · ")}
+                          {[s.kind, s.year, s.genre]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </span>
                       </span>
                     </button>
@@ -167,7 +231,7 @@ export default function AddItemForm({ onAdd }) {
           </div>
         </label>
 
-        <label className="field">
+        <label className="field field--grow">
           <span>Genre</span>
           <input
             type="text"
@@ -178,21 +242,60 @@ export default function AddItemForm({ onAdd }) {
         </label>
       </div>
 
-      {form.poster_url && (
-        <div className="poster-preview">
-          <img src={form.poster_url} alt="" />
-          <span>Poster attached from search</span>
+      <div className="genre-chips">
+        {QUICK_GENRES.map((g) => (
           <button
             type="button"
-            className="btn btn--tiny btn--ghost"
-            onClick={() => setForm((f) => ({ ...f, poster_url: "" }))}
+            key={g}
+            className={`genre-chip ${
+              activeGenres.includes(g.toLowerCase()) ? "genre-chip--active" : ""
+            }`}
+            onClick={() => toggleGenre(g)}
           >
-            Remove
+            {g}
           </button>
+        ))}
+      </div>
+
+      {form.poster_url && (
+        <div className="poster-card">
+          <img src={form.poster_url} alt="" className="poster-card__img" />
+          <div className="poster-card__meta">
+            <span className="poster-card__title">{form.title}</span>
+            <span className="poster-card__sub">
+              {[form.media_type === "tv" ? "TV Series" : "Movie", form.year]
+                .filter(Boolean)
+                .join(" • ")}
+            </span>
+          </div>
+          <div className="poster-card__actions">
+            <button
+              type="button"
+              className="btn btn--tiny btn--ghost"
+              onClick={changePoster}
+            >
+              Change
+            </button>
+            <button
+              type="button"
+              className="btn btn--tiny btn--ghost"
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  poster_url: "",
+                  tmdb_id: null,
+                  media_type: null,
+                  year: null,
+                }))
+              }
+            >
+              Remove
+            </button>
+          </div>
         </div>
       )}
 
-      <div className="index-card__row index-card__row--align">
+      <div className="index-card__row index-card__row--meta">
         <label className="field">
           <span>Status</span>
           <select
@@ -205,13 +308,14 @@ export default function AddItemForm({ onAdd }) {
           </select>
         </label>
 
-        <label className="field">
+        <div className="field">
           <span>Rating</span>
           <StarRating
             value={form.rating}
             onChange={(rating) => setForm({ ...form, rating })}
+            showLabel
           />
-        </label>
+        </div>
 
         <div className="index-card__actions">
           <button

@@ -2,13 +2,7 @@ import { useState } from "react";
 
 const RANKS = [1, 2, 3, 4, 5];
 
-export default function TopFive({
-  items,
-  onAssign,
-  onRemove,
-  onUpdateNote,
-  onOpenDetails,
-}) {
+export default function TopFive({ items, onAssign, onRemove, onOpenDetails }) {
   const [editing, setEditing] = useState(false);
 
   const byRank = {};
@@ -99,25 +93,13 @@ export default function TopFive({
                   </div>
                   <p className="top-five__title">{item.title}</p>
 
-                  {editing ? (
-                    <input
-                      className="top-five__note-input"
-                      type="text"
-                      placeholder="Add a short note…"
-                      defaultValue={item.favorite_note || ""}
-                      maxLength={80}
-                      onBlur={(e) =>
-                        onUpdateNote(item.id, e.target.value.trim())
-                      }
-                    />
-                  ) : (
-                    item.favorite_note && (
-                      <p className="top-five__note">"{item.favorite_note}"</p>
-                    )
-                  )}
-
-                  {editing && (
-                    <div className="top-five__edit-row">
+                  <div
+                    className={`top-five__edit-row ${
+                      editing ? "top-five__edit-row--visible" : ""
+                    }`}
+                    aria-hidden={!editing}
+                  >
+                    <div className="top-five__edit-controls">
                       <button
                         className="top-five__move"
                         onClick={() => moveRank(rank, -1)}
@@ -145,7 +127,7 @@ export default function TopFive({
                         ▶
                       </button>
                     </div>
-                  )}
+                  </div>
                 </>
               ) : editing ? (
                 <select

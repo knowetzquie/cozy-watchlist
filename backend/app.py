@@ -15,8 +15,10 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import sqlite3
 import os
+import json
 import requests
 from datetime import datetime
+from collections import Counter
 
 load_dotenv()
 
@@ -98,12 +100,16 @@ def init_db():
             id INTEGER PRIMARY KEY CHECK (id = 1),
             name TEXT NOT NULL DEFAULT 'Movie Lover',
             bio TEXT NOT NULL DEFAULT '',
-            avatar TEXT NOT NULL DEFAULT '🎬'
+            avatar TEXT NOT NULL DEFAULT '🎬',
+            pinned_favorites TEXT NOT NULL DEFAULT '[]'
         )
         """
     )
+    profile_columns = {row[1] for row in conn.execute("PRAGMA table_info(profile)")}
+    if "pinned_favorites" not in profile_columns:
+        conn.execute("ALTER TABLE profile ADD COLUMN pinned_favorites TEXT NOT NULL DEFAULT '[]'")
     conn.execute(
-        "INSERT OR IGNORE INTO profile (id, name, bio, avatar) VALUES (1, 'Movie Lover', '', '🎬')"
+        "INSERT OR IGNORE INTO profile (id, name, bio, avatar, pinned_favorites) VALUES (1, 'Movie Lover', '', '🎬', '[]')"
     )
     conn.commit()
 
@@ -125,6 +131,31 @@ def row_to_dict(row):
         "liked": bool(row["liked"]) if "liked" in row.keys() else False,
         "created_at": row["created_at"],
     }
+
+
+def normalize_pinned_favorites(value):
+    if value in (None, ""):
+        return []
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+    else:
+        parsed = value
+
+    if not isinstance(parsed, list):
+        return []
+
+    cleaned = []
+    for item in parsed:
+        try:
+            cleaned_value = int(item)
+        except (TypeError, ValueError):
+            continue
+        if cleaned_value not in cleaned:
+            cleaned.append(cleaned_value)
+    return cleaned
 
 def validate_payload(data, partial=False):
     cleaned = {}
@@ -480,7 +511,12 @@ def title_details(tmdb_id):
 def get_profile():
     db = get_db()
     row = db.execute("SELECT * FROM profile WHERE id = 1").fetchone()
-    return jsonify({"name": row["name"], "bio": row["bio"], "avatar": row["avatar"]})
+    return jsonify({
+        "name": row["name"],
+        "bio": row["bio"],
+        "avatar": row["avatar"],
+        "pinned_favorites": normalize_pinned_favorites(row["pinned_favorites"]),
+    })
 
 
 @app.route("/api/profile", methods=["PATCH"])
@@ -492,16 +528,92 @@ def update_profile():
     name = (data.get("name") if "name" in data else row["name"]) or "Movie Lover"
     bio = (data.get("bio") if "bio" in data else row["bio"]) or ""
     avatar = (data.get("avatar") if "avatar" in data else row["avatar"]) or "🎬"
+    pinned_favorites = normalize_pinned_favorites(
+        data.get("pinned_favorites") if "pinned_favorites" in data else row["pinned_favorites"]
+    )
+
+    payload = {
+        "name": name.strip()[:60],
+        "bio": bio.strip()[:200],
+        "avatar": avatar.strip()[:3_000_000],
+        "pinned_favorites": pinned_favorites,
+    }
 
     db.execute(
-        "UPDATE profile SET name = ?, bio = ?, avatar = ? WHERE id = 1",
-        (name.strip()[:60], bio.strip()[:200], avatar.strip()[:3_000_000]),
+        "UPDATE profile SET name = ?, bio = ?, avatar = ?, pinned_favorites = ? WHERE id = 1",
+        (payload["name"], payload["bio"], payload["avatar"], json.dumps(payload["pinned_favorites"])),
     )
     db.commit()
-    return jsonify(
-        {"name": name.strip()[:60], "bio": bio.strip()[:200], "avatar": avatar.strip()[:3_000_000]}
-    )
+    return jsonify(payload)
+
+
+@app.route("/api/profile/talent", methods=["GET"])
+def profile_talent():
+    if not TMDB_API_KEY:
+        return jsonify({"directors": [], "actors": []})
+
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, title, tmdb_id, media_type FROM items WHERE tmdb_id IS NOT NULL ORDER BY created_at DESC"
+    ).fetchall()
+
+    if not rows:
+        return jsonify({"directors": [], "actors": []})
+
+    director_map = {}
+    actor_map = {}
+
+    for r in rows:
+        media_type = r["media_type"] or "movie"
+        try:
+            resp = requests.get(
+                f"{TMDB_BASE}/{media_type}/{r['tmdb_id']}",
+                params={"api_key": TMDB_API_KEY, "append_to_response": "credits"},
+                timeout=5,
+            )
+            if resp.status_code != 200:
+                continue
+            data = resp.json()
+        except requests.RequestException:
+            continue
+
+        title = data.get("title") or data.get("name") or r["title"]
+        credits = data.get("credits", {})
+
+        for person in credits.get("crew", []) or []:
+            if person.get("job") != "Director" or not person.get("name"):
+                continue
+            name = person["name"]
+            entry = director_map.setdefault(name, {"name": name, "photo": None, "count": 0, "titles": []})
+            entry["count"] += 1
+            entry["titles"] = list(dict.fromkeys(entry["titles"] + [title]))
+            if not entry["photo"] and person.get("profile_path"):
+                entry["photo"] = f"{TMDB_IMAGE_BASE}{person['profile_path']}"
+
+        for person in credits.get("cast", []) or []:
+            if not person.get("name"):
+                continue
+            name = person["name"]
+            entry = actor_map.setdefault(name, {"name": name, "photo": None, "count": 0, "titles": []})
+            entry["count"] += 1
+            entry["titles"] = list(dict.fromkeys(entry["titles"] + [title]))
+            if not entry["photo"] and person.get("profile_path"):
+                entry["photo"] = f"{TMDB_IMAGE_BASE}{person['profile_path']}"
+
+    def to_response(mapping):
+        values = []
+        for value in mapping.values():
+            values.append({
+                "name": value["name"],
+                "photo": value["photo"],
+                "count": value["count"],
+                "titles": value["titles"],
+            })
+        values.sort(key=lambda item: (-item["count"], item["name"].lower()))
+        return values[:5]
+
+    return jsonify({"directors": to_response(director_map), "actors": to_response(actor_map)})
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)

@@ -11,8 +11,6 @@ export default function WatchlistItem({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
 
-  const isCompleted = item.status === "completed";
-
   return (
     <li className={`ticket ticket--${item.status.replace(/\s+/g, "-")}`}>
       <div className="ticket__clip">
@@ -78,6 +76,13 @@ export default function WatchlistItem({
                 onChange={(rating) => onUpdate(item.id, { rating })}
               />
 
+              <button
+                className="btn btn--tiny btn--ghost ticket__log-btn"
+                onClick={() => setShowLogModal(true)}
+              >
+                Log
+              </button>
+
               {confirmingDelete ? (
                 <span className="confirm-delete">
                   Remove?
@@ -107,26 +112,6 @@ export default function WatchlistItem({
             </div>
           </div>
 
-          {isCompleted && (
-            <div className="review">
-              {item.review ? (
-                <button
-                  className="review__existing"
-                  onClick={() => setShowLogModal(true)}
-                >
-                  <span className="review__label">Your review</span>
-                  <span className="review__text">{item.review}</span>
-                </button>
-              ) : (
-                <button
-                  className="review__prompt"
-                  onClick={() => setShowLogModal(true)}
-                >
-                  + Write a review
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

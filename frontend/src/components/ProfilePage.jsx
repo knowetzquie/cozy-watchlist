@@ -28,6 +28,12 @@ export default function ProfilePage({ items, onOpenDetails }) {
   const [draftAvatar, setDraftAvatar] = useState("🎬");
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [selectedYear, setSelectedYear] = useState(() =>
+    String(new Date().getFullYear()),
+  );
+  const [selectedMonth, setSelectedMonth] = useState(() =>
+    String(new Date().getMonth()),
+  );
   const [peopleStats, setPeopleStats] = useState({
     directors: [],
     actors: [],
@@ -57,65 +63,84 @@ export default function ProfilePage({ items, onOpenDetails }) {
     let cancelled = false;
 
     async function loadPeople() {
-      const withTmdb = items.filter((i) => i.tmdb_id);
-      if (withTmdb.length === 0) {
-        if (!cancelled)
-          setPeopleStats({ directors: [], actors: [], loading: false });
-        return;
-      }
+      try {
+        const talent = await api.getProfileTalent();
+        if (!cancelled) {
+          setPeopleStats({
+            directors: talent.directors || [],
+            actors: talent.actors || [],
+            loading: false,
+          });
+        }
+      } catch {
+        const withTmdb = items.filter((i) => i.tmdb_id);
+        if (withTmdb.length === 0) {
+          if (!cancelled)
+            setPeopleStats({ directors: [], actors: [], loading: false });
+          return;
+        }
 
-      const results = await Promise.allSettled(
-        withTmdb.map((i) =>
-          api.getTitleDetails(i.tmdb_id, i.media_type || "movie"),
-        ),
-      );
-      if (cancelled) return;
+        const results = await Promise.allSettled(
+          withTmdb.map((i) =>
+            api.getTitleDetails(i.tmdb_id, i.media_type || "movie"),
+          ),
+        );
+        if (cancelled) return;
 
-      const directorMap = new Map();
-      const actorMap = new Map();
+        const directorMap = new Map();
+        const actorMap = new Map();
 
-      results.forEach((r) => {
-        if (r.status !== "fulfilled") return;
-        const data = r.value;
+        results.forEach((r) => {
+          if (r.status !== "fulfilled") return;
+          const data = r.value;
 
-        (data.directors || []).forEach((d) => {
-          if (!d?.name) return;
-          const entry = directorMap.get(d.name) || {
-            name: d.name,
-            photo: d.photo,
-            count: 0,
-          };
-          entry.count += 1;
-          if (!entry.photo && d.photo) entry.photo = d.photo;
-          directorMap.set(d.name, entry);
+          (data.directors || []).forEach((d) => {
+            if (!d?.name) return;
+            const entry = directorMap.get(d.name) || {
+              name: d.name,
+              photo: d.photo,
+              count: 0,
+              titles: [],
+            };
+            entry.count += 1;
+            entry.titles = Array.from(
+              new Set([...(entry.titles || []), data.title]),
+            );
+            if (!entry.photo && d.photo) entry.photo = d.photo;
+            directorMap.set(d.name, entry);
+          });
+
+          (data.cast || []).forEach((c) => {
+            if (!c?.name) return;
+            const entry = actorMap.get(c.name) || {
+              name: c.name,
+              photo: c.photo,
+              count: 0,
+              titles: [],
+            };
+            entry.count += 1;
+            entry.titles = Array.from(
+              new Set([...(entry.titles || []), data.title]),
+            );
+            if (!entry.photo && c.photo) entry.photo = c.photo;
+            actorMap.set(c.name, entry);
+          });
         });
 
-        (data.cast || []).forEach((c) => {
-          if (!c?.name) return;
-          const entry = actorMap.get(c.name) || {
-            name: c.name,
-            photo: c.photo,
-            count: 0,
-          };
-          entry.count += 1;
-          if (!entry.photo && c.photo) entry.photo = c.photo;
-          actorMap.set(c.name, entry);
-        });
-      });
+        const topDirectors = [...directorMap.values()]
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+          .slice(0, 5);
+        const topActors = [...actorMap.values()]
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+          .slice(0, 5);
 
-      const topDirectors = [...directorMap.values()]
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-      const topActors = [...actorMap.values()]
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      if (!cancelled) {
-        setPeopleStats({
-          directors: topDirectors,
-          actors: topActors,
-          loading: false,
-        });
+        if (!cancelled) {
+          setPeopleStats({
+            directors: topDirectors,
+            actors: topActors,
+            loading: false,
+          });
+        }
       }
     }
 
@@ -165,6 +190,14 @@ export default function ProfilePage({ items, onOpenDetails }) {
   }
 
   const completed = items.filter((i) => i.status === "completed");
+  const likedItems = items.filter((i) => i.liked);
+  const topFive = items
+    .filter((i) => i.favorite_rank)
+    .sort((a, b) => a.favorite_rank - b.favorite_rank)
+    .slice(0, 5);
+  const displayFavorites =
+    topFive.length > 0 ? topFive : likedItems.slice(0, 5);
+  const favoriteDisplayItems = displayFavorites.slice(0, 5);
   const watchedDate = (item) => item.watched_at || item.created_at;
 
   const now = new Date();
@@ -174,20 +207,41 @@ export default function ProfilePage({ items, onOpenDetails }) {
     isSameYear(watchedDate(i)),
   ).length;
 
-  const topFive = items
-    .filter((i) => i.favorite_rank)
-    .sort((a, b) => a.favorite_rank - b.favorite_rank);
+  const ratedCompleted = completed.filter((item) => item.rating > 0);
+  const averageRating = ratedCompleted.length
+    ? (
+        ratedCompleted.reduce((sum, item) => sum + Number(item.rating), 0) /
+        ratedCompleted.length
+      ).toFixed(1)
+    : "0.0";
+
+  const genreCounts = items.reduce((acc, item) => {
+    for (const genre of (item.genre || "").split(",")) {
+      const cleaned = genre.trim();
+      if (!cleaned) continue;
+      acc[cleaned] = (acc[cleaned] || 0) + 1;
+    }
+    return acc;
+  }, {});
+  const topGenre =
+    Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
 
   const recentlyWatched = [...completed]
     .sort((a, b) => new Date(watchedDate(b)) - new Date(watchedDate(a)))
     .slice(0, 6);
 
-  const diary = [...completed].sort(
+  const activityItems = [...items].sort(
     (a, b) => new Date(watchedDate(b)) - new Date(watchedDate(a)),
   );
 
+  const statusLabelMap = {
+    "plan to watch": "Add to watchlist",
+    watching: "Watching",
+    completed: "Completed",
+  };
+
   const diaryGroups = [];
-  for (const item of diary) {
+  for (const item of activityItems) {
     const d = new Date(watchedDate(item));
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     const label = d.toLocaleString("default", { month: "short" }).toUpperCase();
@@ -198,6 +252,54 @@ export default function ProfilePage({ items, onOpenDetails }) {
     }
     group.entries.push({ ...item, day: d.getDate() });
   }
+
+  const activityYears = activityItems.map((item) =>
+    new Date(watchedDate(item)).getFullYear(),
+  );
+  const firstActivityYear = activityYears.length
+    ? Math.min(...activityYears)
+    : new Date().getFullYear();
+  const availableYears = Array.from(
+    { length: new Date().getFullYear() - firstActivityYear + 1 },
+    (_, index) => new Date().getFullYear() - index,
+  );
+  const defaultYear = availableYears[0] ?? new Date().getFullYear();
+  const yearValue = selectedYear || String(defaultYear);
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const monthOptions = Array.from({ length: 12 }, (_, index) => index);
+  const monthValue = selectedMonth || String(new Date().getMonth());
+
+  useEffect(() => {
+    if (!availableYears.length) return;
+    const yearNum = Number(yearValue);
+    if (!availableYears.includes(yearNum)) {
+      setSelectedYear(String(availableYears[0]));
+      return;
+    }
+  }, [availableYears, activityItems, monthValue, yearValue]);
+
+  const selectedMonthEntries = activityItems
+    .filter((item) => {
+      const d = new Date(watchedDate(item));
+      return (
+        d.getFullYear() === Number(yearValue) &&
+        d.getMonth() === Number(monthValue)
+      );
+    })
+    .sort((a, b) => new Date(watchedDate(b)) - new Date(watchedDate(a)));
 
   if (loading) return <p className="empty-state">Loading profile…</p>;
 
@@ -312,29 +414,29 @@ export default function ProfilePage({ items, onOpenDetails }) {
 
         <div className="profile-top__stats">
           <div className="profile-top__stat">
-            <span>{completed.length}</span>
-            <label>Films</label>
+            <span>{averageRating}</span>
+            <label>Avg Rating</label>
           </div>
           <div className="profile-top__stat">
-            <span>{filmsThisYear}</span>
-            <label>This Year</label>
+            <span>{likedItems.length}</span>
+            <label>Likes</label>
           </div>
           <div className="profile-top__stat">
-            <span>{topFive.length}</span>
-            <label>Top 5</label>
+            <span>{topGenre}</span>
+            <label>Top Genre</label>
           </div>
         </div>
       </div>
 
       <section className="profile-row-section">
         <h3 className="profile-row-section__label">Favorite Films</h3>
-        {topFive.length === 0 ? (
+        {displayFavorites.length === 0 ? (
           <p className="stats-empty">
-            Pick your Top 5 favorites from the Watchlist tab.
+            Tap the heart on a completed title to pin your favorites here.
           </p>
         ) : (
           <div className="profile-row">
-            {topFive.map((item) => (
+            {favoriteDisplayItems.map((item) => (
               <button
                 key={item.id}
                 className="profile-row__poster-btn"
@@ -370,8 +472,17 @@ export default function ProfilePage({ items, onOpenDetails }) {
           <p className="stats-empty">Add titles matched to TMDB to see this.</p>
         ) : (
           <div className="people-row">
-            {peopleStats.directors.map((d) => (
-              <div className="people-row__person" key={d.name}>
+            {peopleStats.directors.slice(0, 5).map((d) => (
+              <div
+                className="people-row__person"
+                key={d.name}
+                data-titles={d.titles ? d.titles.join(", ") : ""}
+                title={
+                  d.titles
+                    ? d.titles.join(", ")
+                    : `${d.name} — ${d.count} titles`
+                }
+              >
                 {d.photo ? (
                   <img src={d.photo} alt="" className="people-row__photo" />
                 ) : (
@@ -397,8 +508,16 @@ export default function ProfilePage({ items, onOpenDetails }) {
           <p className="stats-empty">Add titles matched to TMDB to see this.</p>
         ) : (
           <div className="people-row">
-            {peopleStats.actors.map((a) => (
-              <div className="people-row__person" key={a.name}>
+            {peopleStats.actors.slice(0, 5).map((a) => (
+              <div
+                className="people-row__person"
+                key={a.name}
+                title={
+                  a.titles
+                    ? a.titles.join(", ")
+                    : `${a.name} — ${a.count} titles`
+                }
+              >
                 {a.photo ? (
                   <img src={a.photo} alt="" className="people-row__photo" />
                 ) : (
@@ -452,30 +571,87 @@ export default function ProfilePage({ items, onOpenDetails }) {
 
       <section className="profile-row-section">
         <h3 className="profile-row-section__label">Activity</h3>
-        {diaryGroups.length === 0 ? (
+        {activityItems.length === 0 ? (
           <p className="stats-empty">
-            Mark titles Completed to build your diary.
+            Add titles to your watchlist to build your activity.
           </p>
         ) : (
           <div className="diary">
-            {diaryGroups.map((group) => (
-              <div className="diary__group" key={group.key}>
-                <div className="diary__month-tab">{group.label}</div>
-                <ul className="diary__entries">
-                  {group.entries.map((item) => (
-                    <li key={item.id} className="diary__entry">
-                      <span className="diary__day">{item.day}</span>
-                      <button
-                        className="diary__title"
-                        onClick={() => onOpenDetails(item)}
-                      >
-                        {item.title}
-                      </button>
-                    </li>
+            <div className="diary__filters">
+              <label className="diary__filter">
+                <span className="diary__filter-label">Year</span>
+                <select
+                  className="diary__select"
+                  value={yearValue}
+                  aria-label="Select year for activity"
+                  onChange={(e) => {
+                    setSelectedYear(e.target.value);
+                  }}
+                >
+                  {availableYears.map((year) => (
+                    <option key={year} value={String(year)}>
+                      {year}
+                    </option>
                   ))}
-                </ul>
-              </div>
-            ))}
+                </select>
+              </label>
+
+              <label className="diary__filter">
+                <span className="diary__filter-label">Month</span>
+                <select
+                  className="diary__select"
+                  value={monthValue}
+                  aria-label="Select month for activity"
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  {monthOptions.map((monthIndex) => (
+                    <option key={monthIndex} value={String(monthIndex)}>
+                      {monthNames[monthIndex]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div
+              key={`${yearValue}-${monthValue}`}
+              className="diary__group diary__group--single"
+            >
+              <ul className="diary__entries">
+                {selectedMonthEntries.length === 0 ? (
+                  <li className="stats-empty stats-empty--inline">
+                    No activity for this month.
+                  </li>
+                ) : (
+                  selectedMonthEntries.map((item) => (
+                    <li key={item.id} className="diary__entry">
+                      <span className="diary__day">
+                        {new Date(watchedDate(item)).getDate()}
+                      </span>
+                      <div className="diary__meta">
+                        <div className="diary__title-row">
+                          <button
+                            className="diary__title"
+                            onClick={() => onOpenDetails(item)}
+                          >
+                            {item.title}
+                          </button>
+                          <span
+                            className="diary__action-star"
+                            aria-label="star"
+                          >
+                            ★
+                          </span>
+                          <span className="diary__status">
+                            {statusLabelMap[item.status] || "Completed"}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
           </div>
         )}
       </section>
