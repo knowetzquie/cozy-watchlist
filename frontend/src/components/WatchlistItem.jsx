@@ -61,19 +61,18 @@ export default function WatchlistItem({
                 <option value="5">★ #5</option>
               </select>
 
-              <select
-                className="status-select"
-                value={item.status}
-                onChange={(e) => onUpdate(item.id, { status: e.target.value })}
-              >
-                <option value="plan to watch">Plan to Watch</option>
-                <option value="watching">Watching</option>
-                <option value="completed">Completed</option>
-              </select>
+              <div className="ticket__status-badge">
+                {item.status === "plan to watch"
+                  ? "Plan to Watch"
+                  : item.status === "watching"
+                    ? "Watching"
+                    : "Completed"}
+              </div>
 
               <StarRating
                 value={item.rating}
-                onChange={(rating) => onUpdate(item.id, { rating })}
+                readOnly={true}
+                onChange={() => {}}
               />
 
               <button
@@ -121,10 +120,8 @@ export default function WatchlistItem({
           onClose={() => setShowLogModal(false)}
           onSave={async (changes) => {
             await onUpdate(item.id, changes);
-            setShowLogModal(false);
           }}
           onDelete={() => {
-            setShowLogModal(false);
             onDelete(item.id);
           }}
         />

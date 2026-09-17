@@ -6,6 +6,13 @@ export default function TitleDetailModal({ item, onClose, onBackfill }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [autoMatched, setAutoMatched] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  function requestClose() {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 180);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -58,9 +65,15 @@ export default function TitleDetailModal({ item, onClose, onBackfill }) {
   }, [item.id, item.title, item.tmdb_id, item.media_type, onBackfill]);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal__close" onClick={onClose} aria-label="Close">
+    <div
+      className={`modal-overlay ${closing ? "modal-overlay--closing" : ""}`}
+      onClick={requestClose}
+    >
+      <div
+        className={`modal ${closing ? "modal--closing" : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="modal__close" onClick={requestClose} aria-label="Close">
           ✕
         </button>
 

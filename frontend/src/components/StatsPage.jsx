@@ -63,6 +63,7 @@ function CompletionRing({ pct }) {
 
 export default function StatsPage({ items, onOpenDetails }) {
   const [activeStat, setActiveStat] = useState(null); // { title, items } | null
+  const [closingStat, setClosingStat] = useState(false);
   const [showOtherGenres, setShowOtherGenres] = useState(false);
 
   const now = new Date();
@@ -241,6 +242,15 @@ export default function StatsPage({ items, onOpenDetails }) {
     });
   }
 
+  function closeStatModal() {
+    if (closingStat) return;
+    setClosingStat(true);
+    window.setTimeout(() => {
+      setActiveStat(null);
+      setClosingStat(false);
+    }, 180);
+  }
+
   return (
     <div className="stats-page">
       <div className="stats-grid">
@@ -335,13 +345,8 @@ export default function StatsPage({ items, onOpenDetails }) {
                         {showOtherGenres ? "-" : "+"}
                       </button>
                     )}
-                    {seg.name === "Other" && (
-                      <div
-                        className={`genre-legend__sublist ${
-                          showOtherGenres ? "genre-legend__sublist--open" : ""
-                        }`}
-                        aria-hidden={!showOtherGenres}
-                      >
+                    {seg.name === "Other" && showOtherGenres && (
+                      <div className="genre-legend__sublist genre-legend__sublist--open">
                         {otherGenres.map(([name, count], index) => (
                           <div className="genre-legend__subitem" key={name}>
                             <span
@@ -489,18 +494,20 @@ export default function StatsPage({ items, onOpenDetails }) {
         )}
       </div>
 
-      {activeStat && (
+      {(activeStat || closingStat) && (
         <div
-          className="modal-overlay stat-modal-overlay"
-          onClick={() => setActiveStat(null)}
+          className={`modal-overlay stat-modal-overlay ${
+            closingStat ? "modal-overlay--closing" : ""
+          }`}
+          onClick={closeStatModal}
         >
           <div
-            className="modal stat-modal"
+            className={`modal stat-modal ${closingStat ? "modal--closing" : ""}`}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               className="modal__close"
-              onClick={() => setActiveStat(null)}
+              onClick={closeStatModal}
               aria-label="Close"
             >
               ✕
@@ -517,7 +524,7 @@ export default function StatsPage({ items, onOpenDetails }) {
               <PosterGrid
                 items={activeStat.items}
                 onOpenDetails={(item) => {
-                  setActiveStat(null);
+                  closeStatModal();
                   onOpenDetails?.(item);
                 }}
               />

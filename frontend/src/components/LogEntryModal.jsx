@@ -9,6 +9,7 @@ function toDateInputValue(dateLike) {
 }
 
 export default function LogEntryModal({ item, onClose, onSave, onDelete }) {
+  const [status, setStatus] = useState(item.status || "plan to watch");
   const [watchedOnEnabled, setWatchedOnEnabled] = useState(true);
   const [watchedOn, setWatchedOn] = useState(
     toDateInputValue(item.watched_at || item.created_at),
@@ -20,31 +21,52 @@ export default function LogEntryModal({ item, onClose, onSave, onDelete }) {
   const [liked, setLiked] = useState(!!item.liked);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  function requestClose() {
+    if (closing || saving) return;
+    setClosing(true);
+    window.setTimeout(onClose, 180);
+  }
 
   async function handleSave() {
     setSaving(true);
     try {
       await onSave({
-        status: "completed",
+        status,
         watched_at: watchedOnEnabled ? watchedOn : null,
         is_rewatch: rewatch,
         review: review.trim(),
-        rating,
+        rating: status === "completed" ? rating : 0,
         liked,
       });
+      requestClose();
     } finally {
       setSaving(false);
     }
   }
 
+  async function handleDelete() {
+    if (closing) return;
+    setClosing(true);
+    await onDelete();
+    window.setTimeout(onClose, 180);
+  }
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--log" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`modal-overlay ${closing ? "modal-overlay--closing" : ""}`}
+      onClick={requestClose}
+    >
+      <div
+        className={`modal modal--log ${closing ? "modal--closing" : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="log-modal__header">
           <h2>Edit diary entry</h2>
           <button
             className="log-modal__close"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
           >
             ✕
@@ -66,6 +88,19 @@ export default function LogEntryModal({ item, onClose, onSave, onDelete }) {
             <h3 className="log-modal__title">{item.title}</h3>
 
             <div className="log-modal__row">
+              <label className="log-modal__field">
+                <span className="log-modal__field-label">Status</span>
+                <select
+                  className="log-modal__status"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="plan to watch">Plan to Watch</option>
+                  <option value="watching">Watching</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </label>
+
               <label className="log-modal__checkbox">
                 <input
                   type="checkbox"
@@ -142,7 +177,7 @@ export default function LogEntryModal({ item, onClose, onSave, onDelete }) {
           {confirmingDelete ? (
             <span className="log-modal__confirm-delete">
               Remove this title?
-              <button className="btn btn--tiny btn--danger" onClick={onDelete}>
+              <button className="btn btn--tiny btn--danger" onClick={handleDelete}>
                 Yes
               </button>
               <button

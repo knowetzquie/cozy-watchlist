@@ -152,10 +152,8 @@ function ReviewCard({ item, onOpenDetails, onUpdate, onDelete }) {
           onClose={() => setShowLogModal(false)}
           onSave={async (changes) => {
             await onUpdate(item.id, changes);
-            setShowLogModal(false);
           }}
           onDelete={() => {
-            setShowLogModal(false);
             onDelete(item.id);
           }}
         />

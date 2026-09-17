@@ -300,7 +300,13 @@ export default function AddItemForm({ onAdd }) {
           <span>Status</span>
           <select
             value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                status: e.target.value,
+                rating: e.target.value === "completed" ? form.rating : 0,
+              })
+            }
           >
             <option value="plan to watch">Plan to Watch</option>
             <option value="watching">Watching</option>
@@ -312,7 +318,10 @@ export default function AddItemForm({ onAdd }) {
           <span>Rating</span>
           <StarRating
             value={form.rating}
-            onChange={(rating) => setForm({ ...form, rating })}
+            readOnly={form.status !== "completed"}
+            onChange={(rating) =>
+              form.status === "completed" && setForm({ ...form, rating })
+            }
             showLabel
           />
         </div>

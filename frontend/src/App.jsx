@@ -220,6 +220,9 @@ export default function App() {
                   handleUpdate(id, { favorite_rank: rank })
                 }
                 onRemove={(id) => handleUpdate(id, { favorite_rank: null })}
+                onUpdateNote={(id, note) =>
+                  handleUpdate(id, { favorite_note: note })
+                }
                 onOpenDetails={setDetailItem}
               />
             </div>

@@ -27,6 +27,7 @@ export default function StarRating({
             onClick={() => !readOnly && onChange(n === value ? 0 : n)}
             aria-label={`${n} star${n > 1 ? "s" : ""}`}
             aria-pressed={n <= value}
+            title={readOnly ? "Complete the movie to rate it" : undefined}
           >
             ★
           </button>

@@ -23,6 +23,8 @@ export default function ProfilePage({ items, onOpenDetails }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [showAvatarOverview, setShowAvatarOverview] = useState(false);
+  const [closingModal, setClosingModal] = useState("");
   const [draftName, setDraftName] = useState("");
   const [draftBio, setDraftBio] = useState("");
   const [draftAvatar, setDraftAvatar] = useState("🎬");
@@ -160,10 +162,38 @@ export default function ProfilePage({ items, onOpenDetails }) {
         avatar: draftAvatar,
       });
       setProfile(updated);
-      setEditing(false);
+      closeProfileEditor();
     } finally {
       setSaving(false);
     }
+  }
+
+  function openProfileEditor() {
+    setDraftName(profile.name);
+    setDraftBio(profile.bio);
+    setDraftAvatar(profile.avatar);
+    setUploadError("");
+    setEditing(true);
+  }
+
+  function closeProfileEditor() {
+    setDraftName(profile.name);
+    setDraftBio(profile.bio);
+    setDraftAvatar(profile.avatar);
+    closeModal("edit");
+  }
+
+  function closeAvatarOverview() {
+    closeModal("overview");
+  }
+
+  function closeModal(name) {
+    setClosingModal(name);
+    window.setTimeout(() => {
+      if (name === "edit") setEditing(false);
+      if (name === "overview") setShowAvatarOverview(false);
+      setClosingModal("");
+    }, 180);
   }
 
   function handlePhotoSelect(e) {
@@ -308,108 +338,32 @@ export default function ProfilePage({ items, onOpenDetails }) {
       <div className="profile-top">
         <button
           className="profile-avatar"
-          onClick={() => editing && setDraftAvatar((a) => a)}
-          title={editing ? "Pick an avatar below" : undefined}
+          onClick={() => setShowAvatarOverview(true)}
+          aria-label="View profile overview"
+          title="View profile overview"
         >
-          {isImageAvatar(editing ? draftAvatar : profile.avatar) ? (
+          {isImageAvatar(profile.avatar) ? (
             <img
-              src={editing ? draftAvatar : profile.avatar}
+              src={profile.avatar}
               alt=""
               className="profile-avatar__img"
             />
-          ) : editing ? (
-            draftAvatar
           ) : (
             profile.avatar
           )}
         </button>
 
         <div className="profile-top__main">
-          {editing ? (
-            <>
-              <input
-                className="profile-edit__name"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                placeholder="Your name"
-                maxLength={60}
-              />
-              <textarea
-                className="profile-edit__bio"
-                value={draftBio}
-                onChange={(e) => setDraftBio(e.target.value)}
-                placeholder="A short bio…"
-                rows={2}
-                maxLength={200}
-              />
-
-              <label className="btn btn--ghost btn--tiny profile-edit__upload-btn">
-                Upload photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoSelect}
-                  hidden
-                />
-              </label>
-              {uploadError && (
-                <p className="profile-edit__upload-error">{uploadError}</p>
-              )}
-
-              <div className="profile-edit__avatars">
-                {AVATAR_OPTIONS.map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    className={`profile-edit__avatar-choice ${
-                      draftAvatar === a
-                        ? "profile-edit__avatar-choice--active"
-                        : ""
-                    }`}
-                    onClick={() => setDraftAvatar(a)}
-                  >
-                    {a}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="profile-top__name-row">
-                <h2 className="profile-top__name">{profile.name}</h2>
-                <button
-                  className="btn btn--ghost btn--tiny"
-                  onClick={() => setEditing(true)}
-                >
-                  Edit Profile
-                </button>
-              </div>
-              {profile.bio && <p className="profile-top__bio">{profile.bio}</p>}
-            </>
-          )}
-
-          {editing && (
-            <div className="profile-edit__actions">
-              <button
-                className="btn btn--ghost btn--tiny"
-                onClick={() => {
-                  setDraftName(profile.name);
-                  setDraftBio(profile.bio);
-                  setDraftAvatar(profile.avatar);
-                  setEditing(false);
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn--primary btn--tiny"
-                onClick={saveProfile}
-                disabled={saving}
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-            </div>
-          )}
+          <div className="profile-top__name-row">
+            <h2 className="profile-top__name">{profile.name}</h2>
+            <button
+              className="btn btn--ghost btn--tiny"
+              onClick={openProfileEditor}
+            >
+              Edit Profile
+            </button>
+          </div>
+          {profile.bio && <p className="profile-top__bio">{profile.bio}</p>}
         </div>
 
         <div className="profile-top__stats">
@@ -427,6 +381,144 @@ export default function ProfilePage({ items, onOpenDetails }) {
           </div>
         </div>
       </div>
+
+      {(showAvatarOverview || closingModal === "overview") && (
+        <div
+          className={`modal-overlay ${
+            closingModal === "overview" ? "modal-overlay--closing" : ""
+          }`}
+          onClick={closeAvatarOverview}
+        >
+          <div
+            className={`modal profile-overview-modal ${
+              closingModal === "overview" ? "modal--closing" : ""
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="modal__close"
+              onClick={closeAvatarOverview}
+              aria-label="Close profile overview"
+            >
+              ✕
+            </button>
+            <div className="profile-overview-modal__avatar">
+              {isImageAvatar(profile.avatar) ? (
+                <img
+                  src={profile.avatar}
+                  alt=""
+                  className="profile-avatar__img"
+                />
+              ) : (
+                profile.avatar
+              )}
+            </div>
+            <h2>{profile.name}</h2>
+            {profile.bio && (
+              <p className="profile-overview-modal__bio">{profile.bio}</p>
+            )}
+            <div className="profile-overview-modal__stats">
+              <div>
+                <strong>{averageRating}</strong>
+                <span>Avg rating</span>
+              </div>
+              <div>
+                <strong>{likedItems.length}</strong>
+                <span>Likes</span>
+              </div>
+              <div>
+                <strong>{topGenre}</strong>
+                <span>Top genre</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(editing || closingModal === "edit") && (
+        <div
+          className={`modal-overlay ${
+            closingModal === "edit" ? "modal-overlay--closing" : ""
+          }`}
+          onClick={closeProfileEditor}
+        >
+          <div
+            className={`modal profile-edit-modal ${
+              closingModal === "edit" ? "modal--closing" : ""
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="modal__close"
+              onClick={closeProfileEditor}
+              aria-label="Close profile editor"
+            >
+              ✕
+            </button>
+            <h2>Edit Profile</h2>
+            <div className="profile-edit-modal__form">
+              <input
+                className="profile-edit__name"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="Your name"
+                maxLength={60}
+              />
+              <textarea
+                className="profile-edit__bio"
+                value={draftBio}
+                onChange={(e) => setDraftBio(e.target.value)}
+                placeholder="A short bio…"
+                rows={3}
+                maxLength={200}
+              />
+              <label className="btn btn--ghost btn--tiny profile-edit__upload-btn">
+                Upload photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                  hidden
+                />
+              </label>
+              {uploadError && (
+                <p className="profile-edit__upload-error">{uploadError}</p>
+              )}
+              <div className="profile-edit__avatars">
+                {AVATAR_OPTIONS.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    className={`profile-edit__avatar-choice ${
+                      draftAvatar === a
+                        ? "profile-edit__avatar-choice--active"
+                        : ""
+                    }`}
+                    onClick={() => setDraftAvatar(a)}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+              <div className="profile-edit__actions">
+                <button
+                  className="btn btn--ghost btn--tiny"
+                  onClick={closeProfileEditor}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn--primary btn--tiny"
+                  onClick={saveProfile}
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="profile-row-section">
         <h3 className="profile-row-section__label">Favorite Films</h3>
