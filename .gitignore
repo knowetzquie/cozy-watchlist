@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # Backend
 backend/__pycache__/
 backend/watchlist.db
@@ -13,3 +14,7 @@ frontend/dist/
 
 #API TMDB
 backend/.env
+=======
+spinebound/
+devops-automation/
+>>>>>>> Stashed changes
