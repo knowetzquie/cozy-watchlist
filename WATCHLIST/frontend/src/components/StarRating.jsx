@@ -1,0 +1,43 @@
+import { useState } from "react";
+
+export default function StarRating({
+  value,
+  onChange,
+  readOnly = false,
+  showLabel = false,
+}) {
+  const [hovered, setHovered] = useState(0);
+  const display = hovered || value;
+
+  return (
+    <div className="star-rating-wrap">
+      <div
+        className="star-rating"
+        onMouseLeave={() => setHovered(0)}
+        role={readOnly ? undefined : "radiogroup"}
+        aria-label="Rating out of 5"
+      >
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`star ${n <= display ? "star--filled" : ""}`}
+            disabled={readOnly}
+            onMouseEnter={() => !readOnly && setHovered(n)}
+            onClick={() => !readOnly && onChange(n === value ? 0 : n)}
+            aria-label={`${n} star${n > 1 ? "s" : ""}`}
+            aria-pressed={n <= value}
+            title={readOnly ? "Complete the movie to rate it" : undefined}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      {showLabel && (
+        <span className="star-rating__label">
+          {display > 0 ? `${display}/5` : "Not rated"}
+        </span>
+      )}
+    </div>
+  );
+}
